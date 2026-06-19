@@ -1,0 +1,6 @@
+{
+  "name": "ABYSSUM",
+  "description": "Forge Network Reconstruction Suite for Siren-class operatives. Reconstruct Node Stone Cores, read deep Ley lines, and secure synaptic Gateways across the Southern Rail Division.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

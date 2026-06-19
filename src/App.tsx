@@ -1,0 +1,1567 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Layers, Sparkles, CreditCard, Wallet, ArrowRight, Cpu, Box, RefreshCw, ShieldCheck, Wand2, X, Lock, Flame, Compass, Sliders, Activity, BookOpen, Train, Zap, Shield, Gauge } from 'lucide-react';
+import { MeshModel, WalletState, PurchaseHistoryItem } from './types';
+import ImageCreationPanel from './components/ImageCreationPanel';
+import ThreeDimensionalViewer from './components/ThreeDimensionalViewer';
+import WalletConnectPanel from './components/WalletConnectPanel';
+import StripeCheckoutModal from './components/StripeCheckoutModal';
+import AbexGdexTicker from './components/AbexGdexTicker';
+import ForgePilotMtdModal from './components/ForgePilotMtdModal';
+import JanesGolemGuide from './components/JanesGolemGuide';
+import TrainRouteRadar from './components/TrainRouteRadar';
+import HeroLandingPage from './components/HeroLandingPage';
+
+const formatUTC = (dateStr: string) => {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'UNKNOWN UTC';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} UTC`;
+  } catch (e) {
+    return 'UNKNOWN UTC';
+  }
+};
+
+const parsePsiToHue = (psiVal: string): number => {
+  if (!psiVal) return 0;
+  const cleaned = psiVal.replace(/[^0-9]/g, '');
+  if (cleaned) {
+    const num = parseInt(cleaned, 10);
+    return num % 360;
+  }
+  let hash = 0;
+  for (let i = 0; i < psiVal.length; i++) {
+    hash = psiVal.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash) % 360;
+};
+
+const playDecryptionHum = () => {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    
+    // Resume immediately if suspended by browser policy
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'triangle';
+    osc1.frequency.setValueAtTime(60, ctx.currentTime); // 60 Hz deep electric power grid hum
+
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(120, ctx.currentTime); // Octave overtone for clear acoustic sense
+
+    const gain1 = ctx.createGain();
+    const gain2 = ctx.createGain();
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(140, ctx.currentTime);
+    filter.Q.setValueAtTime(1.8, ctx.currentTime);
+
+    osc1.connect(gain1);
+    osc2.connect(gain2);
+
+    gain1.connect(filter);
+    gain2.connect(filter);
+
+    filter.connect(ctx.destination);
+
+    const now = ctx.currentTime;
+
+    // Sub-hum envelope: rapid rise, stable sustain, slow organic tail
+    gain1.gain.setValueAtTime(0, now);
+    gain1.gain.linearRampToValueAtTime(0.28, now + 0.15);
+    gain1.gain.setValueAtTime(0.28, now + 0.7);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 2.2);
+
+    // Overtone humming envelope: offset rise and release
+    gain2.gain.setValueAtTime(0, now);
+    gain2.gain.linearRampToValueAtTime(0.14, now + 0.25);
+    gain2.gain.setValueAtTime(0.14, now + 0.6);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 1.9);
+
+    osc1.start(now);
+    osc2.start(now);
+
+    osc1.stop(now + 2.3);
+    osc2.stop(now + 2.3);
+  } catch (e) {
+    console.warn('Web Audio API not supported or blocked by user interaction restrictions:', e);
+  }
+};
+
+interface CharacterStats {
+  name: string;
+  faction: string;
+  tier: string;
+  atk: string;
+  def: string;
+  speed: string;
+  psi: string;
+  skill: string;
+  rank: string;
+  lowGas: string;
+  highGas: string;
+  deployGas: string;
+  seal: string;
+  bio: string;
+}
+
+// Lore Profile matcher for Genesis Veres cards database
+function getLoreProfile(prompt: string): CharacterStats {
+  const lower = prompt.toLowerCase();
+  
+  if (lower.includes('shade') || lower.includes('ghostface') || lower.includes('vael')) {
+    return {
+      name: 'Shade Vael',
+      faction: 'CST — ERT TEAM',
+      tier: 'ULTRA RARE',
+      atk: '9,200',
+      def: '7,400',
+      speed: 'S-TIER',
+      psi: '9,500',
+      skill: 'Shadow Strike',
+      rank: 'Wraith Commander',
+      lowGas: '0.0018 GVR',
+      highGas: '0.0072 GVR',
+      deployGas: '0.0240 GVR',
+      seal: '2 × Boundary Stone',
+      bio: 'Handpicked from the Top Pilots on Deck by unanimous vote of the Astronomical Society. Reads scatter glider frequencies like scripture then silences.'
+    };
+  }
+  if (lower.includes('nyxi') || lower.includes('glitch') || lower.includes('siren')) {
+    return {
+      name: 'Nyxi Glitch',
+      faction: 'SIREN WITCH CORPS',
+      tier: 'RARE',
+      atk: '7,100',
+      def: '4,200',
+      speed: 'A-TIER',
+      psi: '8,800',
+      skill: 'Signal Shatter',
+      rank: 'Tidal Disruptor',
+      lowGas: '0.0012 GVR',
+      highGas: '0.0052 GVR',
+      deployGas: '0.0160 GVR',
+      seal: '1 × Boundary Stone',
+      bio: 'Born where digital tides meet corrupted lay lines. Nyxi carries the resonance frequency of cracked gateways in her voice.'
+    };
+  }
+  if (lower.includes('kazen') || lower.includes('tengu') || lower.includes('warlord')) {
+    return {
+      name: 'Kazenōbu',
+      faction: 'STEAMFITTERS GUILD',
+      tier: 'LEGENDARY',
+      atk: '11,500',
+      def: '10,200',
+      speed: 'S-CEILING',
+      psi: '6,400',
+      skill: 'Storm Talons',
+      rank: 'Golem Warlord',
+      lowGas: '0.0035 GVR',
+      highGas: '0.0140 GVR',
+      deployGas: '0.0520 GVR',
+      seal: '3 × Legendary Core',
+      bio: 'Forged within the heavy armory crossing at Keystone Bridge. Wear the ancient mask of mountain wind and mechanical steam flight-apparatus.'
+    };
+  }
+  if (lower.includes('auremis') || lower.includes('crowned') || lower.includes('witch')) {
+    return {
+      name: 'Auremis',
+      faction: 'CORGEMONT ALLIANCE',
+      tier: 'LEGENDARY',
+      atk: '5,500',
+      def: '8,500',
+      speed: 'S-TIER',
+      psi: '13,000',
+      skill: 'Crown Broadcast',
+      rank: 'Sovereign',
+      lowGas: '0.0044 GVR',
+      highGas: '0.0175 GVR',
+      deployGas: '0.0680 GVR',
+      seal: 'Corgemont Stone ×1',
+      bio: 'Crowned in signal gold at the center of Corgemont lightning fields. The entire city power grid pulses once whenever she speaks.'
+    };
+  }
+  if (lower.includes('oracle') || lower.includes('ai') || lower.includes('predictive')) {
+    return {
+      name: 'ORACLE-7',
+      faction: 'ASTRONOMICAL INST.',
+      tier: 'ULTRA RARE',
+      atk: '∞ NET',
+      def: '12,000',
+      speed: 'Instantaneous',
+      psi: '∞ SENSOR',
+      skill: 'Holographic Map',
+      rank: 'Distributed Mind',
+      lowGas: '0.0028 GVR',
+      highGas: '0.0110 GVR',
+      deployGas: '0.0480 GVR',
+      seal: 'Boundary Stone + Core Key',
+      bio: 'A distributive, coordinate-mapping AI. Simultaneously manages every security boundary, pilot telemetry feed, and key-auth sensor.'
+    };
+  }
+  if (lower.includes('mortex') || lower.includes('corruption') || lower.includes('ash') || lower.includes('skull')) {
+    return {
+      name: 'Mortex Gate',
+      faction: 'GATEWAY CORRUPTION',
+      tier: 'CORRUPTED',
+      atk: 'Bio-Decay',
+      def: 'Red Threat',
+      speed: 'Unstable',
+      psi: 'Skull Broadcast',
+      skill: 'Coordinates Rewriter',
+      rank: 'Corrupt Ash Core',
+      lowGas: '0.0050 GVR',
+      highGas: '0.0200 GVR',
+      deployGas: '0.0900 GVR',
+      seal: 'ERT Active Purge',
+      bio: 'Gothic stone skull node locked in permanent green-spore decay. Actively hijacks and rewrites coordinates. Approach is forbidden.'
+    };
+  }
+  if (lower.includes('sol') || lower.includes('warden') || lower.includes('temple')) {
+    return {
+      name: 'Sol Warden',
+      faction: 'SUN TEMPLE CORES',
+      tier: 'LEGENDARY',
+      atk: 'Radiant Glow',
+      def: 'Ω Power MAX',
+      speed: 'Core Flux',
+      psi: '10,500',
+      skill: 'Reactor Engravings',
+      rank: 'Ancient Keeper',
+      lowGas: '+0.0060 GVR',
+      highGas: '+0.0240 GVR',
+      deployGas: '0.1200 GVR',
+      seal: 'Legendary sequences',
+      bio: 'Pulsing chibi stone engraved with ancient sun system formulas. Activates reactors and increases standard deployment range by 3x.'
+    };
+  }
+  if (lower.includes('thalvara') || lower.includes('marine') || lower.includes('dragon')) {
+    return {
+      name: 'Thalvara',
+      faction: 'SIREN BIOMECH',
+      tier: 'ULTRA RARE',
+      atk: '10,800',
+      def: '11,200',
+      speed: 'S+-TIER',
+      psi: '9,800',
+      skill: 'Dragon Surge',
+      rank: 'Biomech Fusion',
+      lowGas: '0.0032 GVR',
+      highGas: '0.0128 GVR',
+      deployGas: '0.0560 GVR',
+      seal: 'Raijin + Boundary',
+      bio: 'Organic sea-coral suit bonded directly with marine pilot cells. Drifts seamlessly along dynamic water currents.'
+    };
+  }
+  
+  // Default generic profile
+  return {
+    name: 'Anomalous Remnant',
+    faction: 'UNALIGNED REMNANTS',
+    tier: 'COMMON',
+    atk: '4,500',
+    def: '3,800',
+    speed: 'B-TIER',
+    psi: '2,900',
+    skill: 'Ley Alignment',
+    rank: 'Unidentified Core',
+    lowGas: '0.0010 GVR',
+    highGas: '0.0040 GVR',
+    deployGas: '0.0120 GVR',
+    seal: '1 × Boundary Stone',
+    bio: 'An unidentified cognitive memory trace matched against Genesis Veres network frequencies. Secure authorization pending.'
+  };
+}
+
+const loreCards = [
+  {
+    id: 'shade',
+    name: 'Shade Vael',
+    faction: 'CST — ERT TEAM',
+    avatar: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=300&auto=format&fit=crop&q=80',
+    tier: 'ULTRA RARE',
+    color: '#de4e4e',
+    trigger: 'Shade Vael Ghostface Assassin Golem, Wraith Commander ERT Division, shadow strike strike'
+  },
+  {
+    id: 'nyxi',
+    name: 'Nyxi Glitch',
+    faction: 'SIREN WITCH CORPS',
+    avatar: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=300&auto=format&fit=crop&q=80',
+    tier: 'RARE',
+    color: '#4ec1de',
+    trigger: 'Nyxi Glitch Siren Witch signal disruptor, blue gold costume and crown, crystal core'
+  },
+  {
+    id: 'kazen',
+    name: 'Kazenōbu',
+    faction: 'STEAMFITTERS GUILD',
+    avatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&auto=format&fit=crop&q=80',
+    tier: 'LEGENDARY',
+    color: '#deaa4e',
+    trigger: 'Kazenōbu Tengu Golem Warlord, Steamfitters masks, bronze wings, mechanical skeleton'
+  },
+  {
+    id: 'auremis',
+    name: 'Auremis',
+    faction: 'CORGEMONT ALLIANCE',
+    avatar: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=300&auto=format&fit=crop&q=80',
+    tier: 'LEGENDARY',
+    color: '#e1c849',
+    trigger: 'Auremis the Yellow Crowned Witch of Corgemont, lightning crown broadcast'
+  },
+  {
+    id: 'oracle',
+    name: 'ORACLE-7',
+    faction: 'ASTRONOMICAL INST.',
+    avatar: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=300&auto=format&fit=crop&q=80',
+    tier: 'ULTRA RARE',
+    color: '#49cbd6',
+    trigger: 'ORACLE-7 Astronomical AI crown headset, laser lenses, predictive holographic mapping'
+  },
+  {
+    id: 'mortex',
+    name: 'Mortex Gate',
+    faction: 'GATEWAY CORRUPTION',
+    avatar: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=300&auto=format&fit=crop&q=80',
+    tier: 'CORRUPTED',
+    color: '#4ede73',
+    trigger: 'Mortex Gate Corrupted Ash Stone, green skull wall active corruption'
+  },
+  {
+    id: 'sol',
+    name: 'Sol Warden',
+    faction: 'SUN TEMPLE CORES',
+    avatar: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=300&auto=format&fit=crop&q=80',
+    tier: 'LEGENDARY',
+    color: '#e18e3a',
+    trigger: 'Sol Warden Legendary Core Stone, sun temple gold tribal carving radiant chibi'
+  },
+  {
+    id: 'thalvara',
+    name: 'Thalvara',
+    faction: 'SIREN BIOMECH',
+    avatar: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=300&auto=format&fit=crop&q=80',
+    tier: 'ULTRA RARE',
+    color: '#9c4ede',
+    trigger: 'Thalvara Siren Tidal Dragon biomatrix battle armor, sea current cyan scales'
+  }
+];
+
+export default function App() {
+  // App primary states
+  const [activeTab, setActiveTab] = useState<'reactor' | 'golemGuide' | 'forgeDeploy'>('reactor');
+  const [hasEntered, setHasEntered] = useState<boolean>(false);
+  const [activeModel, setActiveModel] = useState<MeshModel | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedPrompt, setSelectedPrompt] = useState<string>('');
+  
+  // Carousel input trigger state & Web3 Modal status
+  const [externalCarouselPrompt, setExternalCarouselPrompt] = useState<string | null>(null);
+  const [isMtdModalOpen, setIsMtdModalOpen] = useState(false);
+  const [isRouteRadarOpen, setIsRouteRadarOpen] = useState(false);
+  const [isFactionLegendOpen, setIsFactionLegendOpen] = useState(false);
+  
+  // Dual-state memory storage
+  const [selectedMaterial, setSelectedMaterial] = useState<string>('metallic_copper');
+  const [selectedLore, setSelectedLore] = useState<string>('');
+
+  // Wallet state
+  const [wallet, setWallet] = useState<WalletState>({
+    isConnected: false,
+    address: null,
+    balance: null,
+    provider: null
+  });
+  const [isWalletOpen, setIsWalletOpen] = useState(false);
+
+  // Billing states
+  const [isBillingOpen, setIsBillingOpen] = useState(false);
+  const [unlockedTier, setUnlockedTier] = useState<string | null>(null);
+  const [purchaseHistory, setPurchaseHistory] = useState<PurchaseHistoryItem[]>([]);
+  const [isProcessingStripe, setIsProcessingStripe] = useState(false);
+
+  // Simulation overlay state (Stripe Test Simulator)
+  const [showStripeSimulator, setShowStripeSimulator] = useState(false);
+  const [simulatedSessionId, setSimulatedSessionId] = useState<string | null>(null);
+  const [simulatedPlanName, setSimulatedPlanName] = useState('');
+  const [simulatedPriceCents, setSimulatedPriceCents] = useState(0);
+
+  // 3D reconstruction states
+  const [isReconstructing, setIsReconstructing] = useState(false);
+  const [reconstructionProgress, setReconstructionProgress] = useState(0);
+  const [reconstructionStep, setReconstructionStep] = useState('');
+
+  // History session models
+  const [generatedSessions, setGeneratedSessions] = useState<{
+    url: string;
+    prompt: string;
+    createdAt: string;
+    material?: string;
+    lore?: string;
+    lores?: string[];
+    activeLoreIndex?: number;
+  }[]>([]);
+
+  const handleCycleLore = (sessionIndex: number, direction: number) => {
+    setGeneratedSessions((prev) =>
+      prev.map((session, index) => {
+        if (index === sessionIndex) {
+          const lores = session.lores || [session.lore || ''];
+          let newIndex = (session.activeLoreIndex ?? 0) + direction;
+          
+          if (newIndex < 0) {
+            newIndex = lores.length - 1;
+          } else if (newIndex >= lores.length) {
+            newIndex = 0;
+          }
+          
+          const newLore = lores[newIndex];
+          
+          if (session.url === selectedImage) {
+            setSelectedLore(newLore);
+          }
+          
+          return {
+            ...session,
+            lore: newLore,
+            activeLoreIndex: newIndex
+          };
+        }
+        return session;
+      })
+    );
+  };
+
+  const [isSyncingSeed, setIsSyncingSeed] = useState(false);
+
+  const handleSyncRandomSeed = async () => {
+    if (!selectedPrompt) return;
+    setIsSyncingSeed(true);
+    try {
+      const response = await fetch('/api/transform-lore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: selectedPrompt,
+          currentLore: selectedLore || activeProfile.bio
+        })
+      });
+      const data = await response.json();
+      if (data.lore) {
+        setSelectedLore(data.lore);
+        
+        // Also update generatedSessions log history so it persists
+        setGeneratedSessions((prev) =>
+          prev.map((session) => {
+            if (session.url === selectedImage) {
+              const currentLores = session.lores || [session.lore || activeProfile.bio];
+              const updatedLores = [...currentLores, data.lore];
+              return {
+                ...session,
+                lore: data.lore,
+                lores: updatedLores,
+                activeLoreIndex: updatedLores.length - 1
+              };
+            }
+            return session;
+          })
+        );
+      }
+    } catch (err) {
+      console.error('Failed to sync random seed lore:', err);
+    } finally {
+      setIsSyncingSeed(false);
+    }
+  };
+
+  // Monitor url parameters query parameters (Stripe Checkout Redirect mimics)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const session_id = params.get('session_id');
+    const tier = params.get('tier');
+    
+    if (session_id && tier) {
+      setUnlockedTier(tier.toLowerCase());
+      
+      const newInvoice: PurchaseHistoryItem = {
+        id: session_id,
+        amount: tier.toLowerCase() === 'premium' ? 4900 : 1900,
+        status: 'succeeded',
+        createdAt: new Date().toISOString(),
+        description: `ABYSSUM Forge Synapse Upgrade - ${tier.toUpperCase()}`
+      };
+      setPurchaseHistory(prev => [newInvoice, ...prev]);
+      
+      // Clean URL params elegantly
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  // Web3 Connection triggers
+  const handleConnectWallet = (provider: 'metamask' | 'coinbase' | 'walletconnect') => {
+    const hex = '0123456789abcdef';
+    let mockAddr = '0x';
+    for (let i = 0; i < 40; i++) {
+      mockAddr += hex[Math.floor(Math.random() * 16)];
+    }
+    const shortAddr = mockAddr.substring(0, 6) + '...' + mockAddr.substring(mockAddr.length - 4);
+    
+    setWallet({
+      isConnected: true,
+      address: shortAddr,
+      balance: (Math.random() * 4 + 0.1).toFixed(3),
+      provider
+    });
+  };
+
+  const handleDisconnectWallet = () => {
+    setWallet({
+      isConnected: false,
+      address: null,
+      balance: null,
+      provider: null
+    });
+  };
+
+  // Image generated trigger handler with full material and lore support
+  const handleRefImageGenerated = (url: string, prompt: string, material?: string, decryptedLore?: string) => {
+    setSelectedImage(url);
+    setSelectedPrompt(prompt);
+    
+    const lower = prompt.toLowerCase();
+    let detectedMat = material || 'metallic_copper';
+    
+    // Safety auto-override keywords
+    if (lower.includes('shade') || lower.includes('ghostface') || lower.includes('kazen')) detectedMat = 'metallic_copper';
+    else if (lower.includes('nyxi') || lower.includes('witch') || lower.includes('siren') || lower.includes('thalvara')) detectedMat = 'ethereal_glass';
+    else if (lower.includes('mortex') || lower.includes('skull') || lower.includes('corrupted') || lower.includes('sol')) detectedMat = 'volcanic_stone';
+
+    setSelectedMaterial(detectedMat);
+    const initialLore = decryptedLore || getLoreProfile(prompt).bio;
+    setSelectedLore(initialLore);
+    
+    setGeneratedSessions(prev => [
+      {
+        url,
+        prompt,
+        createdAt: new Date().toISOString(),
+        material: detectedMat,
+        lore: initialLore,
+        lores: [initialLore],
+        activeLoreIndex: 0
+      },
+      ...prev
+    ]);
+    playDecryptionHum();
+  };
+
+  // Stripe Checkout Flow
+  const handleTriggerStripeCheckout = async (tierName: string, priceCents: number) => {
+    setIsProcessingStripe(true);
+    try {
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planName: tierName === 'PREMIUM' ? 'Styx Gateway Synapse' : 'Standard Node Access',
+          priceAmount: priceCents,
+          tier: tierName.toLowerCase()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Endpoint creation failed on server');
+      }
+
+      const data = await response.json();
+      
+      if (data.isMock) {
+        setSimulatedSessionId(data.id);
+        setSimulatedPlanName(tierName);
+        setSimulatedPriceCents(priceCents);
+        setIsBillingOpen(false);
+        setShowStripeSimulator(true);
+      } else if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed connecting with payments gateway server. Running simulator instead.');
+    } finally {
+      setIsProcessingStripe(false);
+    }
+  };
+
+  // Triggering simulated Tripo 3D generation using thematic industrial-gothic stages
+  const handleTriggerReconstruction = () => {
+    if (!selectedImage) return;
+
+    setIsReconstructing(true);
+    setReconstructionProgress(0);
+    setReconstructionStep('Syncing Node Stone Core signal...');
+
+    const interval = setInterval(() => {
+      setReconstructionProgress(prev => {
+        const next = prev + Math.floor(Math.random() * 12) + 4;
+        
+        if (next >= 100) {
+          clearInterval(interval);
+          setIsReconstructing(false);
+          
+          const modelId = 'mesh_' + Math.random().toString(36).substring(2, 9);
+          const profile = getLoreProfile(selectedPrompt);
+          const modelName = profile.name;
+          
+          const newModel: MeshModel = {
+            id: modelId,
+            name: modelName,
+            prompt: selectedPrompt,
+            sourceImageUrl: selectedImage,
+            status: 'completed',
+            progress: 100,
+            verticesCount: Math.floor(Math.random() * 6500) + 1200,
+            facesCount: Math.floor(Math.random() * 12000) + 2400,
+            createdAt: new Date().toISOString(),
+            autoRotate: true,
+            rotationSpeed: 1.2,
+            viewMode: 'solid',
+            colorTheme: '#c46a1a'
+          };
+          
+          // Inject selected material straight into 3D viewer model state!
+          (newModel as any).detectedMaterial = selectedMaterial;
+          
+          setActiveModel(newModel);
+          return 100;
+        }
+
+        if (next < 30) {
+          setReconstructionStep('Aligning Ley line frequencies...');
+        } else if (next < 55) {
+          setReconstructionStep('Melting Cenote ores & bone ash alloy...');
+        } else if (next < 75) {
+          setReconstructionStep('Weaving mechanical-organic copper nerve-lines...');
+        } else {
+          setReconstructionStep('Stabilizing Core signal & UV wrapping...');
+        }
+
+        return next;
+      });
+    }, 320);
+  };
+
+  // Process Mock Checkout Payment form
+  const handleCompleteSimulatedPayment = () => {
+    if (!simulatedSessionId || !simulatedPlanName) return;
+
+    setIsProcessingStripe(true);
+    setTimeout(() => {
+      setUnlockedTier(simulatedPlanName.toLowerCase());
+      
+      const session_id = simulatedSessionId;
+      const newInvoice: PurchaseHistoryItem = {
+        id: session_id,
+        amount: simulatedPriceCents,
+        status: 'succeeded',
+        createdAt: new Date().toISOString(),
+        description: `ABYSSUM Forge Synapse - ${simulatedPlanName.toUpperCase()} (Sandbox Mode)`
+      };
+      setPurchaseHistory(prev => [newInvoice, ...prev]);
+      
+      setIsProcessingStripe(false);
+      setShowStripeSimulator(false);
+    }, 2000);
+  };
+
+  const activeProfile = getLoreProfile(selectedPrompt);
+
+  if (!hasEntered) {
+    return <HeroLandingPage onEnter={() => setHasEntered(true)} />;
+  }
+
+  return (
+    <div className="h-screen w-screen bg-[#070503] text-[#c8b898] flex flex-col font-mono overflow-hidden relative selection:bg-[#c46a1a]/20 selection:text-[#c46a1a]">
+      
+      {/* Visual background grain texture overlay */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.035] bg-repeat z-30" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }}></div>
+
+      {/* Upper Navigation Header - Static Height */}
+      <header className="h-[54px] px-5 bg-[#030201]/95 border-b border-[#2e2418] flex items-center justify-between z-20 shadow-md shrink-0 relative">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded bg-[#c46a1a]/10 border border-[#c46a1a]/35 flex items-center justify-center shadow-[0_0_8px_rgba(196,106,26,0.25)]">
+            <Flame className="w-4 h-4 text-[#c46a1a] animate-pulse" />
+          </div>
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xs font-bold text-white tracking-[0.2em] uppercase font-sans">
+                ABYSSUM COGNITIVE REACTOR
+              </h1>
+              <span className="text-[7.5px] font-sans font-bold bg-[#140e0a] border border-[#3e2c1a] text-[#b0a090] px-1.5 py-0.2 rounded uppercase tracking-widest">
+                SOUTHERN DIVISION
+              </span>
+            </div>
+            <p className="text-[8.5px] text-[#8b7d6b] leading-none uppercase tracking-wide font-sans">
+              In-Universe Deck Engine • Genesis Veres Decryption Node
+            </p>
+          </div>
+        </div>
+
+        {/* Global actions */}
+        <div className="flex items-center gap-2.5 relative z-10">
+          <button
+            onClick={() => setIsRouteRadarOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#e2933d]/10 hover:bg-[#e2933d]/20 text-[#e2933d] border border-[#e2933d]/40 text-[9.5px] font-bold transition cursor-pointer relative"
+            title="Open CST-ERT tactical route map and heatmap radar"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse absolute -top-0.5 -right-0.5 shadow-[0_0_8px_#f43f5e]" />
+            <Train className="w-3.5 h-3.5 text-amber-500" />
+            CST ROUTE RADAR
+          </button>
+
+          {unlockedTier ? (
+            <div className="flex items-center gap-1 px-2 py-1 rounded bg-[#00ff88]/10 border border-[#00ff88]/30 text-[#00ff88] text-[9px] font-bold shadow-[inset_0_0_4px_rgba(0,192,100,0.05)]">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#00ff88]" />
+              <span>SYNC STATUS: {unlockedTier.toUpperCase()}</span>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsBillingOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#c46a1a]/15 hover:bg-[#c46a1a]/25 text-[#c46a1a] border border-[#c46a1a]/40 text-[9.5px] font-bold transition cursor-pointer"
+            >
+              <CreditCard className="w-3.5 h-3.5" /> UPGRADE CHANNEL
+            </button>
+          )}
+
+          <button
+            onClick={() => setIsWalletOpen(true)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[9.5px] font-bold tracking-wider transition border cursor-pointer ${wallet.isConnected ? 'bg-[#c46a1a]/5 hover:bg-[#c46a1a]/15 text-[#c46a1a] border-[#c46a1a]/30' : 'bg-[#030201] text-slate-400 border-[#2e2418] hover:text-white'}`}
+          >
+            <Wallet className="w-3.5 h-3.5 text-[#c46a1a]" />
+            <span>{wallet.isConnected ? wallet.address : "CONNECT NODE"}</span>
+          </button>
+        </div>
+      </header> 
+
+      {/* Real-time stock stock and gas prices ticker */}
+      <AbexGdexTicker />
+
+      {/* Modern, Premium Industrial Tab Selection Bar */}
+      <div className="bg-[#030201]/90 border-b border-[#2e2418] px-5 py-2 flex items-center gap-4 shrink-0 relative z-20 text-[10px] font-mono">
+        <span className="text-slate-500 uppercase tracking-widest text-[8px] font-bold">SELECT CONDUIT MODULE:</span>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab('reactor')}
+            className={`px-3 py-1 rounded border uppercase tracking-wider text-[8px] font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'reactor'
+                ? 'bg-[#c46a1a]/15 text-white border-[#c46a1a]'
+                : 'bg-[#070503] text-slate-400 border-[#2e2418] hover:text-white hover:border-slate-800'
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${activeTab === 'reactor' ? 'bg-[#c46a1a] animate-pulse' : 'bg-slate-600'}`} />
+            REACTOR FIELD WORKSPACE
+          </button>
+          <button
+            onClick={() => setActiveTab('golemGuide')}
+            className={`px-3 py-1 rounded border uppercase tracking-wider text-[8px] font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'golemGuide'
+                ? 'bg-[#7b5cff]/15 text-[#e4d9ff] border-[#7b5cff]'
+                : 'bg-[#070503] text-slate-400 border-[#2e2418] hover:text-white hover:border-slate-800'
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${activeTab === 'golemGuide' ? 'bg-[#7b5cff] animate-pulse' : 'bg-slate-600'}`} />
+            JANES GOLEM MFG
+          </button>
+          <button
+            onClick={() => setActiveTab('forgeDeploy')}
+            className={`px-3 py-1 rounded border uppercase tracking-wider text-[8px] font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'forgeDeploy'
+                ? 'bg-[#00d4ff]/15 text-[#00d4ff] border-[#00d4ff]'
+                : 'bg-[#070503] text-slate-400 border-[#2e2418] hover:text-white hover:border-slate-800'
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${activeTab === 'forgeDeploy' ? 'bg-[#00d4ff] animate-pulse' : 'bg-slate-600'}`} />
+            FORGE DEPLOY
+          </button>
+        </div>
+      </div>
+
+      {activeTab === 'reactor' && (
+        /* Main Workspace Frame - Non Scrolling Screen Height */
+        <main className="flex-1 p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden relative z-10 h-[calc(100vh-54px-26px-125px)]">
+        
+        {/* Left column (Cols 1-4): Gemini Enigmatic Decryptor & logs */}
+        <section className="lg:col-span-4 flex flex-col gap-4 overflow-hidden h-full">
+          {/* Top Panel: Gemini Decryptor component */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <ImageCreationPanel
+              onImageGenerated={handleRefImageGenerated}
+              isGenerating={isReconstructing}
+              generatedSessions={generatedSessions}
+              walletConnected={wallet.isConnected}
+              onOpenWallet={() => setIsWalletOpen(true)}
+              externalQuery={externalCarouselPrompt}
+              onClearExternalQuery={() => setExternalCarouselPrompt(null)}
+            />
+          </div>
+
+          {/* Bottom Panel: Prompt History list */}
+          <div className="bg-[#0b0907] border border-[#2e2418] rounded-xl p-3 h-[180px] flex flex-col overflow-hidden relative">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block">
+                ⬥ DECRYPTED ANOMALOUS MEMORY LOGS
+              </span>
+              <button
+                onClick={() => setIsFactionLegendOpen(!isFactionLegendOpen)}
+                className="text-[6.5px] font-mono text-amber-500 hover:text-amber-400 bg-[#1a140d] border border-[#a67c2a]/45 px-1.5 py-0.5 rounded flex items-center gap-1 cursor-pointer transition active:scale-95 select-none"
+              >
+                <span>{isFactionLegendOpen ? '✕ CLOSE KEY' : '⬥ FACTION KEY'}</span>
+              </button>
+            </div>
+
+            {isFactionLegendOpen ? (
+              <div className="flex-1 bg-[#040302]/98 border border-[#c46a1a]/30 rounded p-2 overflow-y-auto custom-scrollbar select-none z-10">
+                <div className="text-[6.5px] font-mono text-[#a67c2a]/90 tracking-widest font-bold uppercase mb-1.5 flex items-center justify-between">
+                  <span>⬥ LORE COGNITIVE MATRIX REGISTER</span>
+                  <span className="text-slate-500 text-[6px] font-normal">9 SIGNATURES ONLINE</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1">
+                  {[
+                    { acronym: 'CST', desc: 'Cognitive Security Terminal', label: 'Tactical base-matrix', color: '#de4e4e' },
+                    { acronym: 'ERT', desc: 'Emergency Response Team', label: 'Combat recovery corps', color: '#de4e4e' },
+                    { acronym: 'SWC', desc: 'Siren Witch Corps', label: 'Ethereal spell-casters', color: '#4ec1de' },
+                    { acronym: 'SFG', desc: 'Steamfitters Guild', label: 'Industrial bio-smiths', color: '#deaa4e' },
+                    { acronym: 'COR', desc: 'Cergemont Alliance', label: 'Luminous sky weavers', color: '#e1c849' },
+                    { acronym: 'AST', desc: 'Astronomical Inst.', label: 'Deep cosmos recorders', color: '#49cbd6' },
+                    { acronym: 'GWC', desc: 'Gateway Corruption', label: 'Decaying viral vectors', color: '#4ede73' },
+                    { acronym: 'STC', desc: 'Sun Temple Cores', label: 'Solar matrix guides', color: '#e18e3a' },
+                    { acronym: 'SBM', desc: 'Siren Biomech', label: 'Sub-sea hybrid pilots', color: '#9c4ede' }
+                  ].map((f) => (
+                    <div key={f.acronym} className="flex gap-1 items-start bg-[#0b0907] border border-[#2e2418] p-1 rounded hover:border-[#c46a1a]/45 transition duration-200">
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-0.5" style={{ backgroundColor: f.color }} />
+                      <div className="flex-1 min-w-0 text-[7px] font-mono leading-tight">
+                        <div className="flex items-center gap-1">
+                          <span className="font-bold text-white uppercase">{f.acronym}</span>
+                          <span className="text-[6px] text-[#8e806a]">|</span>
+                          <span className="text-[5.5px] text-slate-500 truncate">{f.label}</span>
+                        </div>
+                        <p className="text-slate-300 text-[6.5px] truncate font-sans font-medium mt-0.2">{f.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
+                {generatedSessions.length > 0 ? (
+                  <div className="space-y-1.5 flex-1 overflow-y-auto pr-1">
+                    <AnimatePresence initial={false}>
+                      {generatedSessions.map((item, i) => {
+                        const isSelected = selectedImage === item.url;
+                        const itemLores = item.lores || [item.lore || ''];
+                        const multiLore = itemLores.length > 1;
+                        const materialLabels: Record<string, string> = {
+                          metallic_copper: 'Metallic Copper',
+                          volcanic_stone: 'Volcanic Stone',
+                          ethereal_glass: 'Ethereal Glass'
+                        };
+
+                        return (
+                          <motion.div
+                            key={item.url || i}
+                            initial={{ opacity: 0, y: -15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -15 }}
+                            transition={{ duration: 0.35, ease: 'easeOut' }}
+                            onClick={() => {
+                              setSelectedImage(item.url);
+                              setSelectedPrompt(item.prompt);
+                              if (item.material) setSelectedMaterial(item.material);
+                              if (item.lore) setSelectedLore(item.lore);
+                            }}
+                            className={`w-full flex flex-col gap-1.5 p-1.5 rounded border transition-all duration-300 text-left cursor-pointer group/item ${isSelected ? 'bg-[#030201] border-[#c46a1a]/40 shadow-[inset_0_0_6px_rgba(196,106,26,0.05)]' : 'bg-[#070503] border-[#2e2418] hover:border-slate-800'}`}
+                          >
+                            <div className="flex gap-2.5">
+                              <img src={item.url} alt={item.prompt} referrerPolicy="no-referrer" className="w-8 h-8 object-cover rounded border border-[#2e2418] shrink-0" />
+                              <div className="flex-1 min-w-0 text-[9px]">
+                                <p className="text-white truncate font-bold uppercase tracking-wider">{item.prompt}</p>
+                                <span className="text-[7.5px] text-[#8b7d6b] block">
+                                  SYNC_RATE: 100% • {formatUTC(item.createdAt)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Decrypted lore history tracker & cycle control */}
+                            {itemLores.length > 0 && (
+                              <div 
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center justify-between bg-[#140e08]/90 border border-[#2e2418] px-2 py-1 rounded text-[7.5px] font-mono mt-0.5"
+                              >
+                                <span className="text-[7px] text-[#8e806a] font-bold uppercase tracking-wider flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+                                  REVISIONS: {itemLores.length} (v{(item.activeLoreIndex ?? 0) + 1})
+                                </span>
+                                {multiLore && (
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => handleCycleLore(i, -1)}
+                                      className="w-4 h-4 rounded border border-[#2e2418] bg-[#030201] text-[6.5px] flex items-center justify-center hover:bg-[#c46a1a]/15 hover:border-[#c46a1a]/40 active:scale-95 transition text-[#a89880] cursor-pointer"
+                                      title="Previous Revision"
+                                    >
+                                      ◀
+                                    </button>
+                                    <button
+                                      onClick={() => handleCycleLore(i, 1)}
+                                      className="w-4 h-4 rounded border border-[#2e2418] bg-[#030201] text-[6.5px] flex items-center justify-center hover:bg-[#c46a1a]/15 hover:border-[#c46a1a]/40 active:scale-95 transition text-[#a89880] cursor-pointer"
+                                      title="Next Revision"
+                                    >
+                                      ▶
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Expanded detailed preview on hover */}
+                            <div className="max-h-0 opacity-0 overflow-hidden group-hover/item:max-h-[350px] group-hover/item:opacity-100 group-hover/item:mt-1.5 transition-all duration-300 ease-in-out border-t border-[#2e2418] pt-1.5 text-[7.5px] font-mono text-[#a89880] space-y-1.5">
+                              <div>
+                                <span className="text-[#c46a1a] uppercase font-bold text-[6.5px] block tracking-wide mb-0.5">FULL PROMPT STREAM:</span>
+                                <span className="text-white font-sans text-[7.5px] leading-relaxed block bg-[#030201] p-1 rounded border border-[#2e2418]/60 break-words whitespace-normal font-medium max-h-[50px] overflow-y-auto pr-0.5 custom-scrollbar">{item.prompt}</span>
+                              </div>
+                              <div className="flex justify-between items-center bg-[#0d0b08] p-1 rounded border border-[#2e2418]">
+                                <span className="text-[#c46a1a] uppercase font-bold text-[6.5px] tracking-wide">MATERIAL COATING:</span>
+                                <span className="text-white text-[7px] font-semibold">{materialLabels[item.material || ''] || 'Metallic Copper'}</span>
+                              </div>
+                              <div>
+                                <span className="text-[#c46a1a] uppercase font-bold text-[6.5px] block tracking-wide mb-0.5">DECRYPTED LORE SEED:</span>
+                                <div className="text-[#a89880] italic leading-normal bg-[#030201] p-1 rounded border border-[#2e2418] text-[7.0px] font-sans break-words whitespace-normal max-h-[80px] overflow-y-auto pr-0.5 custom-scrollbar">
+                                  {item.lore || 'No narrative simulated.'}
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </AnimatePresence>
+                  </div>
+                ) : (
+                  <div className="flex-1 border border-dashed border-[#231b12] rounded flex flex-col items-center justify-center p-3 text-center bg-[#030201]/40">
+                    <Box className="w-5 h-5 text-[#2e2418] mb-1 animate-pulse" />
+                    <p className="text-[8px] text-[#8b7d6b] uppercase tracking-wider">No decrypted records registered.</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+ 
+        {/* Center column (Cols 5-8): Core Card Reactor & Transmutation */}
+        <section className="lg:col-span-4 flex flex-col bg-[#0b0907] border border-[#2e2418] rounded-xl p-4 gap-3.5 overflow-hidden h-full">
+          <div className="flex items-center justify-between pb-1 inline-flex w-full">
+            <div className="space-y-0.5">
+              <span className="text-[8px] text-[#c46a1a] tracking-[0.25em] uppercase flex items-center gap-1 font-bold">
+                <Sparkles className="w-3 h-3 text-[#c46a1a]" /> TRANSMUTATOR: STAGE II
+              </span>
+              <h3 className="text-xs font-cinzel font-bold text-white uppercase tracking-wider">Node Stone Transmutator</h3>
+            </div>
+            <Activity className="w-3 h-3 text-amber-500 hover:scale-110 transition animate-pulse" />
+          </div>
+
+          {selectedImage ? (
+            <div className="flex-1 flex flex-col gap-3 overflow-hidden min-h-0">
+              {/* Image Preview Container */}
+              <div className="flex-1 bg-[#040302] rounded-lg overflow-hidden border border-[#211a12] flex items-center justify-center relative min-h-0">
+                <img src={selectedImage} referrerPolicy="no-referrer" id="tripo-reference-image" alt="Decrypted Core signature" className="w-full h-full object-contain p-2.5 drop-shadow-[0_0_12px_rgba(196,106,26,0.15)] z-10" />
+                
+                {/* 3D Grid pattern for tech layout background */}
+                <div className="absolute inset-0 opacity-[0.012] pointer-events-none" style={{ backgroundImage: "radial-gradient(#c46a1a 1px, transparent 1px)", backgroundSize: "14px 14px" }}></div>
+
+                {/* Ley Line Resonance Visualizer Overlay with dynamic CSS hue filter rotation */}
+                <div 
+                  className="absolute inset-0 z-15 pointer-events-none mix-blend-screen overflow-hidden flex items-center justify-center animate-ley-color-shift"
+                  style={{ '--psi-hue': `${parsePsiToHue(activeProfile?.psi || '0')}deg` } as React.CSSProperties}
+                >
+                  <svg className="absolute inset-0 w-full h-full opacity-65" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <path 
+                      d="M 0 50 Q 25 30 50 50 T 100 50" 
+                      fill="none" 
+                      stroke="#c46a1a" 
+                      strokeWidth="0.4" 
+                      className="animate-ley-wave-1"
+                    />
+                    <path 
+                      d="M 0 50 Q 25 70 50 50 T 100 50" 
+                      fill="none" 
+                      stroke="#e2933d" 
+                      strokeWidth="0.25" 
+                      className="animate-ley-wave-2"
+                    />
+                    <circle 
+                      cx="50" 
+                      cy="50" 
+                      r="28" 
+                      fill="none" 
+                      stroke="#c46a1a" 
+                      strokeWidth="0.2" 
+                      strokeDasharray="3 3"
+                      className="animate-ley-pulse-ring"
+                    />
+                    <circle 
+                      cx="50" 
+                      cy="50" 
+                      r="14" 
+                      fill="none" 
+                      stroke="#a67c2a" 
+                      strokeWidth="0.35" 
+                      className="animate-ley-pulse-ring-fast"
+                    />
+                  </svg>
+
+                  {/* High Quality HUD visual overlay labels */}
+                  <div className="absolute bottom-2 left-2 flex items-center gap-1.5 bg-[#050403]/90 border border-[#c46a1a]/45 px-2 py-0.5 rounded text-[6.5px] font-mono text-[#c46a1a] shadow-lg select-none">
+                    <span className="w-1 h-1 rounded-full bg-[#c46a1a] animate-ping" />
+                    <span className="font-bold tracking-wider">LEY RES_PSI: {activeProfile?.psi || '0'}</span>
+                  </div>
+                </div>
+
+                {/* Reconstruction progress blur screen */}
+                {isReconstructing && (
+                  <div className="absolute inset-0 bg-[#040302]/95 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center z-20 overflow-y-auto">
+                    <RefreshCw className="w-7 h-7 text-[#c46a1a] animate-spin mb-2 shrink-0 drop-shadow-[0_0_8px_#c46a1a]" />
+                    <p className="text-[10px] font-bold text-white tracking-widest uppercase mb-1">
+                      {reconstructionProgress}% RECONSTRUCTING SHADER ALLOY
+                    </p>
+                    <p className="text-[8px] text-slate-400 animate-pulse truncate max-w-full italic mb-1">
+                      {reconstructionStep}
+                    </p>
+                    <div className="w-full max-w-[160px] bg-[#0d0b08] h-1 rounded-full overflow-hidden border border-[#2e2418] shrink-0">
+                      <div
+                        className="bg-[#c46a1a] h-full rounded-full transition-all duration-300 shadow-[0_0_8px_#c46a1a]"
+                        style={{ width: `${reconstructionProgress}%` }}
+                      />
+                    </div>
+
+                    {/* Reconstruction History Milestone Timeline */}
+                    <div className="mt-4 w-full max-w-[210px] border-t border-[#2e2418]/60 pt-3.5 space-y-2 text-left">
+                      <p className="text-[7.5px] font-bold text-[#c46a1a] uppercase tracking-widest flex items-center gap-1 font-sans">
+                        <Sliders className="w-2.5 h-2.5 shrink-0" /> RECONSTRUCTION HISTORY
+                      </p>
+                      
+                      <div className="space-y-1.5 pl-1.5">
+                        {[
+                          { id: 'core', label: 'Core detected', desc: 'Syncing Node Stone Core signal', threshold: 0 },
+                          { id: 'ley', label: 'Ley line frequencies aligned', desc: 'Resonance synchronization complete', threshold: 25 },
+                          { id: 'alloy', label: 'Alloy binding', desc: 'Melting Cenote ores & bone ash alloy', threshold: 50 },
+                          { id: 'weave', label: 'Weaving nerve-lines', desc: 'Synthesizing organic copper structures', threshold: 70 },
+                          { id: 'tessell', label: 'Tessellation complete', desc: 'Generating 3D polygonal shell', threshold: 90 },
+                        ].map((milestone, idx, arr) => {
+                          const isCompleted = reconstructionProgress > milestone.threshold;
+                          const isActive = reconstructionProgress <= milestone.threshold && (idx === 0 || reconstructionProgress > arr[idx - 1].threshold);
+                          
+                          return (
+                            <div key={milestone.id} className="flex items-start gap-2.5 text-[7px] leading-snug transition-all duration-300 relative">
+                              {/* Left track line */}
+                              {idx < arr.length - 1 && (
+                                <div className={`absolute left-[3.5px] top-[9px] w-[1px] h-[14px] ${
+                                  isCompleted ? 'bg-emerald-500/35' : 'bg-[#211a12]'
+                                }`} />
+                              )}
+                              
+                              <div className="flex items-center justify-center mt-[2px] shrink-0 relative z-10">
+                                <div className={`w-2 h-2 rounded-full border flex items-center justify-center ${
+                                  isCompleted 
+                                    ? 'bg-emerald-500/20 border-emerald-400 shadow-[0_0_5px_rgba(16,185,129,0.3)]' 
+                                    : isActive 
+                                      ? 'bg-amber-500/10 border-[#c46a1a] animate-pulse shadow-[0_0_6px_rgba(196,106,26,0.5)]' 
+                                      : 'bg-transparent border-[#211a12]'
+                                }`}>
+                                  {isCompleted && <div className="w-1 h-1 rounded-full bg-emerald-400" />}
+                                  {isActive && <div className="w-1 h-1 rounded-full bg-amber-400 animate-ping" />}
+                                </div>
+                              </div>
+                              
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-baseline justify-between gap-1.5">
+                                  <p className={`font-mono font-black ${
+                                    isCompleted 
+                                      ? 'text-emerald-400/85 line-through decoration-emerald-500/30' 
+                                      : isActive 
+                                        ? 'text-amber-400' 
+                                        : 'text-[#443729]'
+                                  }`}>
+                                    {milestone.label}
+                                  </p>
+                                  {isCompleted && (
+                                    <span className="text-[6px] font-mono text-emerald-500 font-extrabold uppercase shrink-0">
+                                      DONE
+                                    </span>
+                                  )}
+                                  {isActive && (
+                                    <span className="text-[6px] font-mono text-amber-500 font-extrabold uppercase shrink-0 animate-pulse">
+                                      ACTIVE
+                                    </span>
+                                  )}
+                                </div>
+                                {isActive && (
+                                  <p className="text-[6.5px] text-[#8b7d6b] font-sans truncate leading-none mt-0.5">
+                                    {milestone.desc}...
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Diegetic Lore Card Metrics (Genesis Veres HUD details) */}
+              <div className="bg-[#040302] border border-[#211a12] rounded-lg p-2.5 space-y-2 shrink-0">
+                <div className="flex justify-between items-center border-b border-[#211a12] pb-1">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-white font-bold tracking-wide uppercase font-sans">
+                      {activeProfile.name}
+                    </span>
+                    <span className="text-[7.5px] text-slate-500 block uppercase font-mono tracking-wider">
+                      {activeProfile.faction}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[8px] px-1.5 py-0.5 rounded bg-[#c46a1a]/10 text-white border border-[#c46a1a]/30 font-bold tracking-wider">
+                      {activeProfile.tier}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[8px] font-mono">
+                  {/* ATTACK POWER WITH TOOLTIP */}
+                  <div className="flex justify-between items-center group relative cursor-help py-0.5">
+                    <span className="text-slate-500 border-b border-dotted border-slate-500/40 uppercase">ATTACK POWER:</span>
+                    <span className="text-red-400 font-bold">{activeProfile.atk}</span>
+                    
+                    {/* Tooltip Popup */}
+                    <div className="absolute bottom-full left-0 mb-2 w-52 p-2 rounded-lg bg-[#0e0c0a] border border-red-500/35 text-[#d0c6b6] text-[7.5px] leading-relaxed shadow-2xl opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 pointer-events-none transition-all duration-200 z-50 font-sans">
+                      <div className="flex items-center gap-1 border-b border-red-500/20 pb-1 mb-1 text-red-400 font-bold uppercase font-mono">
+                        <Zap className="w-2.5 h-2.5 text-red-400" /> Atk Mesh Impact
+                      </div>
+                      <span className="block leading-normal">
+                        Governs the **procedural vertex spike density** and geometric facet sharpness. Higher attack profiles increase crystalline ridges and tessellation count across the hull.
+                      </span>
+                      <div className="absolute left-4 top-full w-2 h-2 bg-[#0e0c0a] border-r border-b border-red-500/35 rotate-45 -translate-y-1" />
+                    </div>
+                  </div>
+
+                  {/* DEF RESISTANCE WITH TOOLTIP */}
+                  <div className="flex justify-between items-center group relative cursor-help py-0.5">
+                    <span className="text-slate-500 border-b border-dotted border-slate-500/40 uppercase">DEF RESISTANCE:</span>
+                    <span className="text-blue-400 font-bold">{activeProfile.def}</span>
+                    
+                    {/* Tooltip Popup */}
+                    <div className="absolute bottom-full right-0 mb-2 w-52 p-2 rounded-lg bg-[#0e0c0a] border border-blue-500/35 text-[#d0c6b6] text-[7.5px] leading-relaxed shadow-2xl opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 pointer-events-none transition-all duration-200 z-50 font-sans">
+                      <div className="flex items-center gap-1 border-b border-blue-500/20 pb-1 mb-1 text-blue-400 font-bold uppercase font-mono">
+                        <Shield className="w-2.5 h-2.5 text-blue-400" /> Def Mesh Impact
+                      </div>
+                      <span className="block leading-normal">
+                        Controls the **structural boundary envelope limit** and vertex coordinate extrema. A higher defense value scales and thickens the master physical bounding box.
+                      </span>
+                      <div className="absolute right-4 top-full w-2 h-2 bg-[#0e0c0a] border-r border-b border-blue-500/35 rotate-45 -translate-y-1" />
+                    </div>
+                  </div>
+
+                  {/* SPEED PROFILE WITH TOOLTIP */}
+                  <div className="flex justify-between items-center group relative cursor-help py-0.5">
+                    <span className="text-slate-500 border-b border-dotted border-slate-500/40 uppercase">SPEED PROFILE:</span>
+                    <span className="text-emerald-400 font-bold">{activeProfile.speed}</span>
+                    
+                    {/* Tooltip Popup */}
+                    <div className="absolute bottom-full left-0 mb-2 w-52 p-2 rounded-lg bg-[#0e0c0a] border border-emerald-500/35 text-[#d0c6b6] text-[7.5px] leading-relaxed shadow-2xl opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 pointer-events-none transition-all duration-200 z-50 font-sans">
+                      <div className="flex items-center gap-1 border-b border-emerald-500/20 pb-1 mb-1 text-emerald-400 font-bold uppercase font-mono">
+                        <Gauge className="w-2.5 h-2.5 text-emerald-400" /> Speed Mesh Impact
+                      </div>
+                      <span className="block leading-normal">
+                        Influences **kinematic viewport rotation multiplier** and vertex wave cycle oscillation speed. Elevated speed accelerates dynamic viewport physics.
+                      </span>
+                      <div className="absolute left-4 top-full w-2 h-2 bg-[#0e0c0a] border-r border-b border-emerald-500/35 rotate-45 -translate-y-1" />
+                    </div>
+                  </div>
+
+                  {/* PSI SENSITIVITY WITH TOOLTIP */}
+                  <div className="flex justify-between items-center group relative cursor-help py-0.5">
+                    <span className="text-slate-500 border-b border-dotted border-slate-500/40 uppercase">PSI SENSITIVITY:</span>
+                    <span className="text-purple-400 font-bold">{activeProfile.psi}</span>
+                    
+                    {/* Tooltip Popup */}
+                    <div className="absolute bottom-full right-0 mb-2 w-52 p-2 rounded-lg bg-[#0e0c0a] border border-purple-500/35 text-[#d0c6b6] text-[7.5px] leading-relaxed shadow-2xl opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 pointer-events-none transition-all duration-200 z-50 font-sans">
+                      <div className="flex items-center gap-1 border-b border-purple-500/20 pb-1 mb-1 text-purple-400 font-bold uppercase font-mono">
+                        <Activity className="w-2.5 h-2.5 text-purple-500" /> Psi Mesh Impact
+                      </div>
+                      <span className="block leading-normal">
+                        Drives **emission fissure glow intensity**, dynamic color shifting, and core noise waves. Intense Psi results in vivid spectral color cascades on shaders.
+                      </span>
+                      <div className="absolute right-4 top-full w-2 h-2 bg-[#0e0c0a] border-r border-b border-purple-500/35 rotate-45 -translate-y-1" />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between col-span-2 border-t border-[#120d09] pt-1">
+                    <span className="text-slate-500">PASSIVE HANDSHAKE:</span>
+                    <span className="text-amber-500 font-bold">{activeProfile.skill}</span>
+                  </div>
+                </div>
+
+                {/* Lore text narration with Sync Random Seed */}
+                <div className="space-y-1.5 pt-1.5 border-t border-[#120d09]">
+                  <div className="flex justify-between items-center text-[7.5px] font-mono text-slate-500 uppercase tracking-widest">
+                    <span>COGNITIVE BIO-NARRATION</span>
+                    <button
+                      onClick={handleSyncRandomSeed}
+                      disabled={isSyncingSeed}
+                      className="flex items-center gap-1 text-[7.5px] tracking-wider text-[#c46a1a] border border-[#c46a1a]/30 rounded bg-[#c46a1a]/5 hover:bg-[#c46a1a]/15 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer px-1.5 py-0.5 uppercase font-semibold"
+                    >
+                      <RefreshCw className={`w-2 h-2 text-[#c46a1a] ${isSyncingSeed ? 'animate-spin' : ''}`} />
+                      <span>{isSyncingSeed ? 'SYNCING...' : 'SYNC RANDOM SEED'}</span>
+                    </button>
+                  </div>
+                  <div className="border-l-2 border-[#c46a1a] pl-2 font-mono text-[8px] text-[#a89880] italic leading-normal min-h-[30px] flex items-center relative">
+                    {isSyncingSeed ? (
+                      <span className="text-slate-500 animate-pulse uppercase tracking-wider text-[7px]">Rerouting Leylines... Decrypting core alternative lore timeline...</span>
+                    ) : (
+                      selectedLore ? selectedLore : activeProfile.bio
+                    )}
+                  </div>
+                </div>
+
+                {/* Live Gas deploy pricing log */}
+                <div className="grid grid-cols-3 gap-2 pt-1 border-t border-[#120d09] text-[7.5px] font-mono">
+                  <div>
+                    <span className="text-slate-500 block">LOW (1.6 KM)</span>
+                    <span className="text-cyan-400 font-semibold">{activeProfile.lowGas}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">HIGH STREAM</span>
+                    <span className="text-indigo-400 font-semibold">{activeProfile.highGas}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">SEAL REQUIRED</span>
+                    <span className="text-amber-400 font-semibold truncate block">{activeProfile.seal}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Transmutation Execute CTA */}
+              <button
+                onClick={handleTriggerReconstruction}
+                disabled={isReconstructing}
+                className="w-full py-2 rounded-lg text-[10px] font-mono font-bold tracking-widest uppercase transition bg-[#c46a1a]/15 text-white hover:bg-[#c46a1a]/30 border border-[#c46a1a]/40 disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 cursor-pointer shadow-[0_0_10px_rgba(196,106,26,0.1)] shrink-0"
+              >
+                <Layers className="w-3.5 h-3.5 text-[#c46a1a]" />
+                <span>PROCESS IN THE REACTOR FURNACE</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-[#2e2418] rounded-xl bg-[#030201]/40">
+              <BookOpen className="w-8 h-8 text-[#2e2418] animate-bounce mb-2" />
+              <h4 className="text-xs font-cinzel text-slate-400 tracking-wider">REPLICATOR DECK INACTIVE</h4>
+              <p className="text-[10px] font-mono text-[#8b7d6b] max-w-xs mt-1.5 leading-relaxed">
+                Provide or load a cognitive memory signature in Section I. The predictive AI decrypter will align custom material formulas into the reactor pipeline.
+              </p>
+            </div>
+          )}
+        </section>
+
+        {/* Right column (Cols 9-12): Geothermal 3D Mesh Engine */}
+        <section className="lg:col-span-4 h-full overflow-hidden">
+          <ThreeDimensionalViewer 
+            model={activeModel} 
+            onTriggerMtd={() => setIsMtdModalOpen(true)} 
+            psiSensitivity={activeProfile?.psi || '0'} 
+          />
+        </section>
+
+      </main>
+      )}
+
+      {activeTab === 'golemGuide' && (
+        <main className="flex-1 overflow-hidden relative z-10 flex flex-col">
+          <JanesGolemGuide />
+        </main>
+      )}
+
+      {activeTab === 'forgeDeploy' && (
+        <main className="flex-1 overflow-hidden relative z-10 flex flex-col bg-[#020408]">
+          <iframe 
+            src="/CST_Character_Viewer_Controller.html" 
+            className="w-full h-full border-none flex-grow"
+            title="Forge Deploy — Character Viewer"
+            allow="accelerometer; gyroscope; magnetometer"
+          />
+        </main>
+      )}
+
+      {/* Stripe Interactive Checkout Sandbox Simulator Modal */}
+      {showStripeSimulator && (
+        <div id="stripe-checkout-sandbox-simulator" className="fixed inset-0 z-50 overflow-y-auto bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 select-none">
+          <div className="w-full max-w-md bg-[#0d0b08] border border-[#2e2418] rounded-2xl shadow-[0_0_40px_rgba(196,106,26,0.3)] overflow-hidden flex flex-col">
+            <div className="bg-[#080604] px-5 py-3 flex items-center justify-between text-white border-b border-[#2e2418]">
+              <div className="flex items-center gap-2">
+                <Compass className="w-4 h-4 text-[#c46a1a] animate-pulse" />
+                <span className="text-[9.5px] font-bold tracking-widest uppercase text-[#c46a1a]">FORGE PATHWAY SYNAPSE</span>
+              </div>
+              <button onClick={() => setShowStripeSimulator(false)} className="text-slate-400 hover:text-white transition cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-left">
+              <div className="bg-[#030201] p-4 rounded-xl border border-[#c46a1a]/20 space-y-1 text-center">
+                <span className="text-[8px] text-[#c46a1a] tracking-[0.2em] uppercase block">SECURE DIRECT handshaking</span>
+                <h4 className="text-xs text-white uppercase mt-0.5 tracking-wider">SYNAPSE LAYER: {simulatedPlanName}</h4>
+                <p className="text-xl text-[#c46a1a] font-extrabold">${(simulatedPriceCents / 100).toFixed(2)} USD</p>
+              </div>
+
+              <div className="space-y-2.5 font-mono text-[9px]">
+                <div className="space-y-0.5">
+                  <label className="text-slate-500 uppercase tracking-wider block font-bold">Holder Identity / Pilot Signature</label>
+                  <input
+                    type="text"
+                    defaultValue="Tony Scott"
+                    className="w-full p-2 bg-[#050403] border border-[#2e2418] rounded text-[#c8b898] outline-none"
+                  />
+                </div>
+
+                <div className="space-y-0.5">
+                  <label className="text-slate-500 uppercase tracking-wider block font-bold">Stripe Handshake Card Key</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      defaultValue="4242 •••• •••• 4242"
+                      disabled
+                      className="w-full p-2 bg-[#050403] border border-[#2e2418] rounded text-slate-400"
+                    />
+                    <span className="absolute right-2 top-1.5 text-[8px] bg-[#c46a1a]/10 text-[#c46a1a] border border-[#c46a1a]/30 px-1.5 py-0.5 rounded font-bold uppercase">
+                      SANDBOX
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-slate-500 uppercase tracking-wider block font-bold">EXP DATE</label>
+                    <input
+                      type="text"
+                      defaultValue="12 / 29"
+                      className="w-full p-2 bg-[#050403] border border-[#2e2418] rounded text-center text-[#c8b898] outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-500 uppercase tracking-wider block font-bold">CVC CODE</label>
+                    <input
+                      type="text"
+                      defaultValue="042"
+                      className="w-full p-2 bg-[#050403] border border-[#2e2418] rounded text-center text-[#c8b898] outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleCompleteSimulatedPayment}
+                disabled={isProcessingStripe}
+                className="w-full py-2.5 bg-[#c46a1a] hover:bg-[#a67c2a] text-white text-[9.5px] font-bold tracking-widest uppercase rounded transition flex items-center justify-center gap-1.5 shadow-[0_0_12px_rgba(196,106,26,0.2)] cursor-pointer"
+              >
+                {isProcessingStripe ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" /> COG-HANDSHAKING...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-3.5 h-3.5 text-white" /> CONFIRM SECURE DEPOSIT
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stripe Purchase pricing models modal */}
+      <StripeCheckoutModal
+        isOpen={isBillingOpen}
+        onClose={() => setIsBillingOpen(false)}
+        unlockedTier={unlockedTier}
+        history={purchaseHistory}
+        onTriggerCheckout={handleTriggerStripeCheckout}
+        isProcessing={isProcessingStripe}
+      />
+
+      {/* Web3 Slide-over Panel drawer */}
+      <WalletConnectPanel
+        wallet={wallet}
+        onConnect={handleConnectWallet}
+        onDisconnect={handleDisconnectWallet}
+        isOpen={isWalletOpen}
+        onClose={() => setIsWalletOpen(false)}
+      />
+
+      {/* Tripo3D Base Sepolia Mint to Deploy (MTD) interactive workflow modal */}
+      <ForgePilotMtdModal
+        isOpen={isMtdModalOpen}
+        onClose={() => setIsMtdModalOpen(false)}
+        activeModel={activeModel}
+        wallet={wallet}
+        onOpenWallet={() => setIsWalletOpen(true)}
+      />
+
+      {/* Pop out Train Route and Tactical Radar panel */}
+      <TrainRouteRadar
+        isOpen={isRouteRadarOpen}
+        onClose={() => setIsRouteRadarOpen(false)}
+      />
+
+      {/* Core Lore card Infinite Carousel Footer */}
+      <footer id="codex-rail" className="h-[125px] min-h-[125px] bg-[#050403] border-t border-[#2e2418] relative z-20 flex flex-col justify-center overflow-hidden shrink-0 select-none">
+        <div className="px-5 py-1 border-b border-[#211a12] flex items-center justify-between text-[7.5px] tracking-widest text-[#a67c2a] font-bold uppercase">
+          <span>⬥ LORE CARD INFINITE SYNAPSE CAROUSEL (HOVER TO SUSPEND • CLICK COGNITIVE SLOT TO DECRYPT SEED)</span>
+          <span className="text-slate-500 font-mono text-[7px]">{loreCards.length} ANOMALOUS INTERFACES ONLINE</span>
+        </div>
+        
+        {/* Infinite Carousel Track */}
+        <div className="flex-1 flex items-center overflow-hidden relative">
+          <div id="carousel-track" className="flex gap-4 animate-carousel whitespace-nowrap py-2 px-5">
+            {/* Double map to guarantee pixel width for continuous circular slide */}
+            {[...loreCards, ...loreCards].map((card, idx) => (
+              <div
+                key={`${card.id}-${idx}`}
+                onClick={() => {
+                  setExternalCarouselPrompt(card.trigger);
+                }}
+                className="inline-flex items-center gap-3 bg-[#0d0b08] border border-[#2e2418] hover:border-[#c46a1a] p-2 pr-4 rounded-lg cursor-pointer transform hover:scale-105 shadow-md shadow-black/80 hover:shadow-[0_0_12px_rgba(196,106,26,0.15)] transition-all duration-300 group min-w-[215px] max-w-[215px]"
+              >
+                {/* Visual token thumbnail placeholder */}
+                <div className="w-9 h-9 rounded-md overflow-hidden border border-[#2e2418] shrink-0 relative bg-black flex items-center justify-center">
+                  <img src={card.avatar} referrerPolicy="no-referrer" alt={card.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                  <div className="absolute inset-0 bg-[#0d0b08]/20" />
+                </div>
+                
+                {/* Mini details card */}
+                <div className="flex-1 min-w-0 flex flex-col text-[8px] leading-tight">
+                  <div className="flex justify-between items-center gap-1">
+                    <span className="text-white font-extrabold uppercase truncate group-hover:text-[#c46a1a] transition-colors font-sans">
+                      {card.name}
+                    </span>
+                    <span 
+                      className="text-[6.5px] px-1 rounded-sm border shrink-0 font-extrabold uppercase font-sans"
+                      style={{ color: card.color, borderColor: `${card.color}40`, backgroundColor: `${card.color}10` }}
+                    >
+                      {card.tier.split(' ')[0]}
+                    </span>
+                  </div>
+                  <span className="text-slate-500 font-mono text-[7px] mt-0.5 truncate uppercase">
+                    {card.faction}
+                  </span>
+                  <span className="text-amber-500 text-[6.5px] font-mono font-bold mt-1.5 hidden group-hover:inline-block animate-pulse font-sans">
+                    ⬥ LOAD SEED INDEX
+                  </span>
+                  <span className="text-slate-600 font-sans text-[7px] mt-1 group-hover:hidden truncate italic">
+                    {card.trigger.substring(0, 30)}...
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </footer>
+
+      {/* Global CSS Injector for Ley Line Resonance Animations */}
+      <style>{`
+        @keyframes leyWave1 {
+          0% {
+            transform: translateY(-4px) scaleY(1);
+          }
+          50% {
+            transform: translateY(4px) scaleY(1.3);
+          }
+          100% {
+            transform: translateY(-4px) scaleY(1);
+          }
+        }
+        @keyframes leyWave2 {
+          0% {
+            transform: translateY(2px) scaleY(1.2);
+          }
+          50% {
+            transform: translateY(-2px) scaleY(0.85);
+          }
+          100% {
+            transform: translateY(2px) scaleY(1.2);
+          }
+        }
+        @keyframes leyPulseRing {
+          0% {
+            transform: scale(0.85);
+            opacity: 0.35;
+          }
+          50% {
+            transform: scale(1.08);
+            opacity: 0.75;
+          }
+          100% {
+            transform: scale(0.85);
+            opacity: 0.35;
+          }
+        }
+        @keyframes leyPulseRingFast {
+          0% {
+            transform: scale(0.65);
+            opacity: 0.25;
+          }
+          50% {
+            transform: scale(1.25);
+            opacity: 0.85;
+          }
+          100% {
+            transform: scale(0.65);
+            opacity: 0.25;
+          }
+        }
+        @keyframes leyLineResonanceShift {
+          0%, 100% {
+            filter: hue-rotate(var(--psi-hue, 0deg)) saturate(2.4) brightness(1.1);
+          }
+          50% {
+            filter: hue-rotate(calc(var(--psi-hue, 0deg) + 120deg)) saturate(3.8) brightness(1.3);
+          }
+        }
+        .animate-ley-wave-1 {
+          animation: leyWave1 5.5s ease-in-out infinite;
+          transform-origin: center;
+        }
+        .animate-ley-wave-2 {
+          animation: leyWave2 3.8s ease-in-out infinite;
+          transform-origin: center;
+        }
+        .animate-ley-pulse-ring {
+          animation: leyPulseRing 4.6s ease-in-out infinite;
+          transform-origin: center;
+        }
+        .animate-ley-pulse-ring-fast {
+          animation: leyPulseRingFast 2.8s ease-in-out infinite;
+          transform-origin: center;
+        }
+        .animate-ley-color-shift {
+          animation: leyLineResonanceShift 7.5s linear infinite;
+        }
+      `}</style>
+
+    </div>
+  );
+}

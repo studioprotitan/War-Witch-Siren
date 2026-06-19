@@ -1,0 +1,1477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GENESIS VERSE — FIELD UNIT INSPECTION TERMINAL</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://cdn.babylonjs.com/babylon.js"></script>
+<script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+<style>
+:root {
+  --void: #020408;
+  --panel: #05080f;
+  --panel2: #080d18;
+  --border: #1a2535;
+  --gold: #c8920a;
+  --gold-bright: #f0b030;
+  --cyan: #00d4ff;
+  --red: #ff2a2a;
+  --green: #00ff88;
+  --orange: #ff7730;
+  --purple: #9b4dff;
+  --text: #ccd8e8;
+  --dim: #3a5070;
+  --scan: #ffffff04;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--void);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  height: 100vh; overflow: hidden;
+  display: flex; flex-direction: column;
+  user-select: none;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, var(--scan) 2px, var(--scan) 4px);
+  pointer-events: none; z-index: 9999;
+}
+
+/* ── TOP BAR ── */
+#topbar {
+  position: fixed; top: 0; left: 0; right: 0; height: 44px;
+  background: #020408dd;
+  border-bottom: 1px solid var(--gold);
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 0 16px; z-index: 200;
+  font-family: 'Share Tech Mono', monospace;
+  backdrop-filter: blur(8px);
+}
+.tb-left { display: flex; flex-direction: column; }
+.tb-title { font-size: 10px; color: var(--dim); letter-spacing: 3px; }
+.tb-sub { font-size: 12px; color: var(--gold); font-weight: 700; letter-spacing: 2px; }
+.tb-stats { display: flex; gap: 20px; }
+.tb-stat { display: flex; flex-direction: column; align-items: center; }
+.tb-stat-label { font-size: 7px; color: var(--dim); letter-spacing: 2px; }
+.tb-stat-val { font-size: 11px; color: var(--cyan); }
+.tb-right { display: flex; gap: 8px; align-items: center; }
+.tb-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--dim); padding: 3px 10px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; cursor: pointer;
+  letter-spacing: 2px; transition: all 0.2s;
+}
+.tb-btn:hover { border-color: var(--gold); color: var(--gold); }
+.tb-btn.active { border-color: var(--cyan); color: var(--cyan); }
+#operative-status {
+  font-size: 8px; color: var(--dim);
+  letter-spacing: 1px;
+}
+#operative-status.live { color: var(--green); }
+
+/* ── CANVAS ── */
+#renderCanvas {
+  width: 100%; height: 100vh;
+  display: block; background: transparent;
+  touch-action: none;
+}
+
+/* ── LEFT PANEL ── */
+#left-panel {
+  position: fixed; top: 54px; left: 12px;
+  width: 180px; z-index: 100;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.panel-box {
+  background: #020408cc;
+  border: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  padding: 10px 12px;
+}
+.panel-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px; letter-spacing: 3px;
+  color: var(--gold); margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Stats */
+.stat-line {
+  display: flex; justify-content: space-between;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; margin-bottom: 3px;
+}
+.stat-key { color: var(--dim); }
+.stat-val { color: var(--cyan); }
+.stat-val.orange { color: var(--orange); }
+.stat-val.green { color: var(--green); }
+
+/* Animation list */
+.anim-btn {
+  display: block; width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 8px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; font-weight: 400;
+  cursor: pointer; text-align: left;
+  margin-bottom: 3px;
+  transition: all 0.15s;
+  letter-spacing: 1px;
+}
+.anim-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.anim-btn.active { border-color: var(--gold); color: var(--gold); background: var(--panel2); }
+.anim-btn.combat { border-left: 2px solid var(--red); }
+.anim-btn.fire { border-left: 2px solid var(--orange); }
+.anim-btn.move { border-left: 2px solid var(--cyan); }
+.anim-btn.idle { border-left: 2px solid var(--green); }
+.anim-btn.osu { border-left: 2px solid var(--purple); }
+
+/* Speed */
+.speed-row {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 8px;
+}
+.speed-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px; color: var(--dim);
+  white-space: nowrap;
+}
+input[type=range] {
+  flex: 1; -webkit-appearance: none; height: 2px;
+  background: var(--border); border-radius: 1px; outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 10px; height: 10px;
+  border-radius: 50%; background: var(--gold); cursor: pointer;
+}
+#speed-val {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; color: var(--cyan); width: 26px;
+}
+
+/* Toggle buttons */
+.toggle-row {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;
+}
+.tog-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px; letter-spacing: 1px;
+  padding: 3px 7px; cursor: pointer;
+  transition: all 0.2s; flex: 1;
+}
+.tog-btn.on { border-color: var(--green); color: var(--green); }
+#tog-heatmap.on { border-color: #f43f5e !important; color: #f43f5e !important; }
+.tog-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+/* ── RIGHT PANEL ── */
+#right-panel {
+  position: fixed; top: 54px; right: 12px;
+  width: 200px; z-index: 100;
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+/* Light rig swatches */
+.rig-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+}
+.rig-btn {
+  padding: 5px 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px; letter-spacing: 1px;
+  cursor: pointer; text-align: center;
+  transition: all 0.2s;
+}
+.rig-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.rig-btn.active { border-color: var(--gold); color: var(--gold); background: var(--panel2); }
+
+/* Camera preset */
+.cam-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+}
+.cam-btn {
+  padding: 6px 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px; letter-spacing: 1px;
+  cursor: pointer; text-align: center;
+  transition: all 0.2s;
+}
+.cam-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+/* Navigation */
+.nav-btn {
+  display: block; width: 100%;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; letter-spacing: 2px;
+  padding: 7px; cursor: pointer;
+  transition: all 0.2s; text-align: center;
+  margin-bottom: 4px;
+}
+.nav-btn:hover { border-color: var(--gold); color: var(--gold); }
+.nav-btn.primary { border-color: var(--cyan); color: var(--cyan); }
+.nav-btn.primary:hover { background: var(--cyan); color: #000; }
+
+/* ── OSU FACE VIEWER (bottom-right slot) ── */
+#osu-face-panel {
+  position: fixed; bottom: 16px; right: 12px;
+  width: 200px; z-index: 100;
+  background: #020408cc;
+  border: 1px solid var(--purple);
+  backdrop-filter: blur(8px);
+  padding: 10px 12px;
+}
+.osu-face-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px; letter-spacing: 3px;
+  color: var(--purple); margin-bottom: 6px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #9b4dff44;
+}
+#osu-face-canvas {
+  width: 100%; height: 140px;
+  border: 1px solid #9b4dff22;
+  background: #05020a;
+  display: block;
+}
+.osu-morph-row {
+  display: flex; justify-content: space-between;
+  align-items: center; margin-top: 5px;
+}
+.osu-morph-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 7px; color: var(--dim); letter-spacing: 1px;
+}
+.osu-morph-val {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px; color: var(--purple);
+}
+#osu-face-status {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 7px; color: var(--dim);
+  text-align: center; margin-top: 5px;
+  letter-spacing: 2px;
+}
+
+/* ── PLAYER CONTROLLER HUD ── */
+#player-hud {
+  position: fixed; bottom: 16px; left: 12px;
+  z-index: 100;
+  display: flex; flex-direction: column; gap: 6px;
+}
+
+.hud-state-box {
+  background: #020408cc;
+  border: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  padding: 8px 12px;
+  font-family: 'Share Tech Mono', monospace;
+}
+.hud-state-line {
+  display: flex; gap: 8px;
+  font-size: 9px; margin-bottom: 2px;
+}
+.hud-state-key { color: var(--dim); width: 60px; }
+.hud-state-val { color: var(--cyan); }
+.hud-state-val.combat { color: var(--red); }
+.hud-state-val.move { color: var(--green); }
+.hud-state-val.fire { color: var(--orange); }
+.hud-state-val.osu { color: var(--purple); }
+
+/* Keybinding cheatsheet */
+.keybind-box {
+  background: #020408cc;
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  backdrop-filter: blur(8px);
+}
+.key-row {
+  display: flex; gap: 6px; align-items: center;
+  margin-bottom: 3px;
+}
+.key-badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px; color: var(--gold);
+  background: var(--panel2);
+  border: 1px solid var(--gold);
+  padding: 1px 5px; min-width: 18px;
+  text-align: center;
+}
+.key-desc {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px; color: var(--dim); letter-spacing: 1px;
+}
+.key-desc.combat { color: var(--red); }
+.key-desc.fire { color: var(--orange); }
+.key-desc.move { color: var(--cyan); }
+.key-desc.osu { color: var(--purple); }
+
+/* ── BOTTOM TIMELINE ── */
+#timeline {
+  display: none !important;
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: 48px;
+  background: #020408cc;
+  border-top: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 16px; z-index: 200;
+}
+#play-btn {
+  background: transparent;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 12px;
+  border-radius: 2px; flex-shrink: 0;
+  transition: all 0.2s;
+}
+#play-btn:hover { background: var(--gold); color: #000; }
+#tl-track {
+  flex: 1; height: 3px; background: var(--border);
+  border-radius: 2px; position: relative; cursor: pointer;
+}
+#tl-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), var(--cyan));
+  border-radius: 2px; width: 0%;
+  pointer-events: none;
+}
+#tl-thumb {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--gold); left: 0%;
+  pointer-events: none; margin-left: -5px;
+}
+.tl-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; color: var(--dim);
+  white-space: nowrap;
+}
+#tl-anim-name { color: var(--gold); max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+#tl-frames { color: var(--cyan); }
+
+/* ── DROP ZONE ── */
+#drop-zone {
+  position: fixed; inset: 0;
+  background: #020408f0;
+  z-index: 500;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 20px;
+}
+#drop-zone.hidden { display: none; }
+.dz-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 22px; font-weight: 900;
+  color: var(--gold); letter-spacing: 4px;
+}
+.dz-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; color: var(--dim); letter-spacing: 4px;
+}
+.dz-box {
+  width: 360px; height: 160px;
+  border: 1px dashed var(--border);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px;
+  cursor: pointer; transition: all 0.2s;
+}
+.dz-box:hover, .dz-box.over { border-color: var(--gold); }
+.dz-icon { font-size: 36px; }
+.dz-text {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px; color: var(--dim); text-align: center;
+}
+#file-input { display: none; }
+.dz-divider {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px; color: var(--dim); letter-spacing: 3px;
+}
+.dz-cdnbtn {
+  background: transparent;
+  border: 1px solid var(--cyan);
+  color: var(--cyan); padding: 8px 24px;
+  font-family: 'Orbitron', monospace;
+  font-size: 10px; letter-spacing: 3px;
+  cursor: pointer; transition: all 0.2s;
+}
+.dz-cdnbtn:hover { background: var(--cyan); color: #000; }
+
+/* ── LOADER ── */
+#loader {
+  position: fixed; inset: 0;
+  background: #020408f0;
+  z-index: 490;
+  display: none;
+  flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+}
+.loader-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 14px; color: var(--gold); letter-spacing: 3px;
+}
+.loader-bar {
+  width: 280px; height: 3px;
+  background: var(--border); border-radius: 2px; overflow: hidden;
+}
+#loader-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), var(--cyan));
+  width: 0%; transition: width 0.3s;
+}
+.loader-status {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; color: var(--dim); letter-spacing: 2px;
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="tb-left">
+    <div class="tb-title">// CST OPERATIVE DOSSIER — CHARACTER VIEWER</div>
+    <div class="tb-sub">GENESIS VERSE — FIELD UNIT INSPECTION TERMINAL</div>
+  </div>
+  <div class="tb-stats">
+    <div class="tb-stat"><div class="tb-stat-label">MESHES</div><div class="tb-stat-val" id="s-mesh">—</div></div>
+    <div class="tb-stat"><div class="tb-stat-label">BONES</div><div class="tb-stat-val" id="s-bones">—</div></div>
+    <div class="tb-stat"><div class="tb-stat-label">POLYS</div><div class="tb-stat-val" id="s-polys">—</div></div>
+    <div class="tb-stat"><div class="tb-stat-label">FPS</div><div class="tb-stat-val" id="s-fps">—</div></div>
+    <div class="tb-stat"><div class="tb-stat-label">ANIM</div><div class="tb-stat-val" id="s-anim" style="color:var(--gold);font-size:9px;max-width:180px;overflow:hidden;text-overflow:ellipsis;">—</div></div>
+  </div>
+  <div class="tb-right">
+    <div id="operative-status">AWAITING OPERATIVE</div>
+    <button class="tb-btn" onclick="toggleControllerMode()" id="ctrl-toggle">VIEWER MODE</button>
+    <button class="tb-btn" onclick="showDropZone()">LOAD NEW OPERATIVE</button>
+    <button class="tb-btn" onclick="window.history.back()">← MISSION HQ</button>
+  </div>
+</div>
+
+<!-- CANVAS -->
+<canvas id="renderCanvas"></canvas>
+
+<!-- LEFT PANEL -->
+<div id="left-panel">
+
+  <!-- ANIMATIONS -->
+  <div class="panel-box">
+    <div class="panel-label">// ANIMATIONS</div>
+    <div id="anim-list" style="max-height:220px;overflow-y:auto;">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);">
+        Load operative to begin
+      </div>
+    </div>
+    <div class="speed-row">
+      <span class="speed-label">SPD</span>
+      <input type="range" id="speed-slider" min="0.1" max="3" step="0.1" value="1"
+             oninput="setSpeed(this.value)">
+      <span id="speed-val">1.0x</span>
+    </div>
+    <div class="toggle-row">
+      <button class="tog-btn on" id="tog-loop" onclick="toggleLoop()">LOOP</button>
+      <button class="tog-btn" id="tog-wire" onclick="toggleWireframe()">WIRE</button>
+      <button class="tog-btn" id="tog-skel" onclick="toggleSkeleton()">SKEL</button>
+      <button class="tog-btn on" id="tog-grid" onclick="toggleGrid()">GRID</button>
+      <button class="tog-btn" id="tog-heatmap" onclick="toggleHeatmap()" style="flex: 1 1 100%; border-color: var(--orange); color: var(--gold); font-weight: bold; margin-top: 4px;">HEATMAP OVERLAY [OFF]</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- RIGHT PANEL -->
+<div id="right-panel">
+
+  <!-- LIGHT RIG -->
+  <div class="panel-box">
+    <div class="panel-label">// LIGHT RIG</div>
+    <div class="rig-grid">
+      <button class="rig-btn active" onclick="setRig('combat',this)">COMBAT</button>
+      <button class="rig-btn" onclick="setRig('aquila',this)">AQUILA</button>
+      <button class="rig-btn" onclick="setRig('field',this)">FIELD</button>
+      <button class="rig-btn" onclick="setRig('mystic',this)">MYSTIC</button>
+      <button class="rig-btn" onclick="setRig('studio',this)">STUDIO</button>
+      <button class="rig-btn" onclick="setRig('void',this)">VOID</button>
+    </div>
+  </div>
+
+  <!-- CAMERA PRESET -->
+  <div class="panel-box">
+    <div class="panel-label">// CAMERA PRESET</div>
+    <div class="cam-grid">
+      <button class="cam-btn" onclick="setCam('full')">FULL BODY</button>
+      <button class="cam-btn" onclick="setCam('bust')">BUST SHOT</button>
+      <button class="cam-btn" onclick="setCam('detail')">DETAIL MODE</button>
+      <button class="cam-btn" onclick="setCam('reset')">RESET</button>
+    </div>
+  </div>
+
+  <!-- DEPLOYMENT DRONE -->
+  <div class="panel-box">
+    <div class="panel-label">// DEPLOYMENT DRONE</div>
+    <div class="cam-grid">
+      <button class="cam-btn" id="btn-drone" onclick="toggleDroneView()" style="grid-column: span 2; border-color: var(--purple); color: var(--purple); font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <span style="display: inline-block; width: 6px; height: 6px; background-color: var(--dim); border-radius: 50%;" id="drone-indicator"></span>
+        DRONE INSPECT [OFF]
+      </button>
+    </div>
+  </div>
+
+  <!-- NAVIGATION -->
+  <div class="panel-box">
+    <div class="panel-label">// NAVIGATION</div>
+    <button class="nav-btn primary" onclick="showDropZone()">LOAD NEW OPERATIVE</button>
+    <button class="nav-btn" onclick="window.history.back()">◄ RETURN TO MISSION HQ</button>
+  </div>
+
+</div>
+
+<!-- OSU FACE VIEWER -->
+<div id="osu-face-panel">
+  <div class="osu-face-label">// OSU UNIT — FACE INTERFACE</div>
+  <canvas id="osu-face-canvas"></canvas>
+  <div class="osu-morph-row">
+    <span class="osu-morph-label">EXPRESSION</span>
+    <span class="osu-morph-val" id="osu-expr">NEUTRAL</span>
+  </div>
+  <div class="osu-morph-row">
+    <span class="osu-morph-label">CQL LAYER</span>
+    <span class="osu-morph-val" id="osu-cql">STANDBY</span>
+  </div>
+  <div id="osu-face-status">DROP OSU FACE GLB TO ACTIVATE</div>
+  <input type="file" id="osu-file-input" accept=".glb,.gltf" style="display:none"
+         onchange="loadOSUFace(event)">
+  <button onclick="document.getElementById('osu-file-input').click()"
+          style="width:100%;margin-top:6px;background:transparent;
+          border:1px solid #9b4dff44;color:var(--purple);
+          font-family:'Share Tech Mono',monospace;font-size:8px;
+          letter-spacing:2px;padding:5px;cursor:pointer;">
+    LOAD OSU FACE GLB
+  </button>
+</div>
+
+<!-- PLAYER CONTROLLER HUD -->
+<div id="player-hud">
+  <div class="hud-state-box">
+    <div class="hud-state-line">
+      <span class="hud-state-key">STATE</span>
+      <span class="hud-state-val" id="pc-state">VIEWER</span>
+    </div>
+    <div class="hud-state-line">
+      <span class="hud-state-key">ACTION</span>
+      <span class="hud-state-val" id="pc-action">—</span>
+    </div>
+    <div class="hud-state-line">
+      <span class="hud-state-key">MODE</span>
+      <span class="hud-state-val" id="pc-mode">ORBIT CAM</span>
+    </div>
+  </div>
+  <div class="keybind-box" id="keybind-help">
+    <div class="key-row"><span class="key-badge">W/S</span><span class="key-desc move">WALK FWD / BACK</span></div>
+    <div class="key-row"><span class="key-badge">A/D</span><span class="key-desc move">STRAFE L / R</span></div>
+    <div class="key-row"><span class="key-badge">SPC</span><span class="key-desc move">JUMP</span></div>
+    <div class="key-row"><span class="key-badge">F</span><span class="key-desc combat">FIST ATTACK</span></div>
+    <div class="key-row"><span class="key-badge">G</span><span class="key-desc fire">FIRE (CYCLE S/M/F)</span></div>
+    <div class="key-row"><span class="key-badge">E</span><span class="key-desc">INTERACT / IDLE B</span></div>
+    <div class="key-row"><span class="key-badge">A</span><span class="key-desc osu">OSU ABILITY</span></div>
+    <div class="key-row"><span class="key-badge">X</span><span class="key-desc">LOADOUT DEPLOY</span></div>
+    <div class="key-row"><span class="key-badge">TAB</span><span class="key-desc">TOGGLE CONTROLLER</span></div>
+  </div>
+</div>
+
+<!-- BOTTOM TIMELINE -->
+<div id="timeline">
+  <button id="play-btn" onclick="togglePlay()">▶</button>
+  <span class="tl-label" id="tl-anim-name">—</span>
+  <div id="tl-track" onclick="seekTL(event)">
+    <div id="tl-fill"></div>
+    <div id="tl-thumb"></div>
+  </div>
+  <span class="tl-label"><span id="tl-frames">0 / 0</span></span>
+</div>
+
+<!-- DROP ZONE -->
+<div id="drop-zone">
+  <div class="dz-title">FIELD UNIT INSPECTION TERMINAL</div>
+  <div class="dz-sub">// GENESIS VERSE — OPERATIVE DOSSIER SYSTEM</div>
+  <div class="dz-box" id="dz-box" onclick="document.getElementById('file-input').click()">
+    <div class="dz-icon">⬆</div>
+    <div class="dz-text">Drop <strong style="color:var(--gold)">operative.glb</strong> here<br>or click to browse</div>
+  </div>
+  <input type="file" id="file-input" accept=".glb,.gltf" onchange="handleFile(event)">
+  <div class="dz-divider">— or load from CDN —</div>
+  <button class="dz-cdnbtn" onclick="loadCDN('cst-mint-deploy-mvp-animation-group-01.glb')">
+    CST MVP GROUP 01
+  </button>
+  <button class="dz-cdnbtn" style="border-color:var(--orange);color:var(--orange);margin-top:6px"
+          onclick="loadCDN('scene-mtd-forge-net-viewer.glb')">
+    FORGE NET VIEWER
+  </button>
+</div>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-title">LOADING OPERATIVE</div>
+  <div class="loader-bar"><div id="loader-fill"></div></div>
+  <div class="loader-status" id="loader-msg">Initializing...</div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   GENESIS VERSE — CST CHARACTER VIEWER + PLAYER CONTROLLER
+   Babylon.js CDN · Commander Antonio Scott · Simpro Titans Studio
+═══════════════════════════════════════════════════════════════ */
+
+// ── CDN BASE ────────────────────────────────────────────────────
+const CDN_BASE = 'https://github.com/studioprotitan/AbyssumVIP/releases/download/forge_net_deploy_floor_viewer/';
+
+// ── ENGINE STATE ────────────────────────────────────────────────
+let engine, scene, camera;
+let loadedMeshes = [], loadedSkeletons = [], animGroups = [];
+let currentAnim = null;
+let isPlaying = false, isLooping = true;
+let wireOn = false, skelOn = false, gridOn = true;
+let heatmapOn = false, heatmapMat = null;
+let skeletonViewer = null, ground = null;
+let inspectorOpen = false;
+
+// ── DEPLOYMENT DRONE ENGINE STATE ───────────────────────────────
+let droneActive = false;
+let savedCamAlpha = -Math.PI / 2;
+let savedCamBeta = Math.PI / 2.3;
+let savedCamRadius = 4.5;
+let savedCamTarget = null;
+let savedWireframeState = false;
+
+// ── PLAYER CONTROLLER STATE ─────────────────────────────────────
+let controllerMode = false;
+let keys = {};
+let pcState = 'IDLE';
+let fireCycle = 0; // 0=slow 1=medium 2=fast
+let lastAction = '';
+
+// ── ANIMATION KEY MAP ────────────────────────────────────────────
+// Maps keybindings to animation group name fragments
+// The system finds the best match from loaded animation groups
+const KEY_ANIM_MAP = {
+  'w':         ['fist-walk-a', 'cst-ert-walk', 'Walk_Fwd', 'walk'],
+  's':         ['fist-walk-back', 'walk-back', 'Walk_Back'],
+  'a':         ['fist-walk-left', 'walk-left', 'Walk_Left', 'strafe-left'],
+  'd':         ['fist-walk-right', 'walk-right', 'Walk_Right', 'strafe-right'],
+  ' ':         ['cst-ert-jump-mid-a', 'jump-mid', 'jump', 'Jump'],
+  'f':         ['fist-attack-a', 'fist-attack', 'attack'],
+  'g_slow':    ['osu-prime-fire-slow', 'fire-slow', 'Fire_Slow'],
+  'g_medium':  ['osu-prime-fire-medium', 'fire-medium', 'Fire_Medium'],
+  'g_fast':    ['osu-prime-fire-fast', 'fire-fast', 'Fire_Fast'],
+  'e':         ['cst-ert-idle-b', 'idle-b', 'Idle_0'],
+  'ability':   ['osu-loadout-deploy', 'osu-unit-idle', 'deploy'],
+  'x':         ['osu-loadout-deploy-a', 'loadout', 'deploy'],
+  'idle':      ['cst-ert-idle-b', 'fist-idle-a', 'Idle_0', 'idle'],
+};
+
+// ── LIGHT RIGS ──────────────────────────────────────────────────
+const RIGS = {
+  combat: { key:[1.2,0.5,0.3], fill:[0.2,0.3,0.5], rim:[0.8,0.2,0.1] },
+  aquila: { key:[0.2,0.6,1.2], fill:[0.1,0.3,0.7], rim:[0.0,0.4,1.0] },
+  field:  { key:[0.3,0.9,0.4], fill:[0.1,0.5,0.2], rim:[0.0,0.7,0.3] },
+  mystic: { key:[0.5,0.1,1.1], fill:[0.2,0.05,0.5], rim:[0.4,0.0,0.8] },
+  studio: { key:[1.0,1.0,1.0], fill:[0.6,0.6,0.7], rim:[0.4,0.4,0.5] },
+  void:   { key:[0.1,0.1,0.15], fill:[0.03,0.03,0.07], rim:[0.08,0.0,0.15] },
+};
+
+// ── INIT ────────────────────────────────────────────────────────
+const canvas = document.getElementById('renderCanvas');
+
+function init() {
+  engine = new BABYLON.Engine(canvas, true, {
+    preserveDrawingBuffer: true, stencil: true, antialias: true
+  });
+  scene = new BABYLON.Scene(engine);
+  scene.clearColor = new BABYLON.Color4(0.008, 0.016, 0.028, 1);
+
+  setupCamera();
+  setupLights('combat');
+  setupGround();
+  setupFPSCounter();
+
+  engine.runRenderLoop(() => {
+    scene.render();
+    updateTimeline();
+    if (controllerMode) updateController();
+  });
+
+  window.addEventListener('resize', () => engine.resize());
+  setupDropZone();
+  setupKeyboard();
+}
+
+// ── CAMERA ─────────────────────────────────────────────────────
+function setupCamera() {
+  camera = new BABYLON.ArcRotateCamera(
+    'cam', -Math.PI/2, Math.PI/2.3, 4.5,
+    new BABYLON.Vector3(0, 1, 0), scene
+  );
+  camera.attachControl(canvas, true);
+  camera.lowerRadiusLimit = 0.3;
+  camera.upperRadiusLimit = 30;
+  camera.wheelDeltaPercentage = 0.015;
+  camera.minZ = 0.01;
+}
+
+function setCam(preset) {
+  if (droneActive) {
+    // Gracefully toggle drone view state back before setting normal camera preset
+    droneActive = false;
+    const btn = document.getElementById('btn-drone');
+    if (btn) {
+      btn.innerHTML = `<span style="display: inline-block; width: 6px; height: 6px; background-color: var(--dim); border-radius: 50%;" id="drone-indicator"></span> DRONE INSPECT [OFF]`;
+      btn.style.borderColor = 'var(--purple)';
+      btn.style.color = 'var(--purple)';
+    }
+    wireOn = savedWireframeState;
+    document.getElementById('tog-wire').classList.toggle('on', wireOn);
+    loadedMeshes.forEach(m => { if (m.material) m.material.wireframe = wireOn; });
+  }
+
+  if (preset === 'full') {
+    camera.setTarget(new BABYLON.Vector3(0, 0.95, 0));
+    camera.radius = 3.5; camera.alpha = -Math.PI/2; camera.beta = Math.PI/2.2;
+  } else if (preset === 'bust') {
+    camera.setTarget(new BABYLON.Vector3(0, 1.55, 0));
+    camera.radius = 1.6; camera.alpha = -Math.PI/2; camera.beta = Math.PI/2.5;
+  } else if (preset === 'detail') {
+    camera.radius = 0.7;
+  } else {
+    camera.setTarget(new BABYLON.Vector3(0, 1, 0));
+    camera.radius = 4.5; camera.alpha = -Math.PI/2; camera.beta = Math.PI/2.3;
+  }
+}
+
+function toggleDroneView() {
+  if (!camera) return;
+  droneActive = !droneActive;
+  const btn = document.getElementById('btn-drone');
+  
+  if (droneActive) {
+    // Save current camera properties
+    savedCamAlpha = camera.alpha;
+    savedCamBeta = camera.beta;
+    savedCamRadius = camera.radius;
+    savedCamTarget = camera.target ? (camera.target.clone ? camera.target.clone() : camera.target) : new BABYLON.Vector3(0, 1, 0);
+    savedWireframeState = wireOn;
+
+    // Transition/set camera to top-down view (aerial view)
+    camera.setTarget(new BABYLON.Vector3(0, 0.5, 0));
+    camera.alpha = -Math.PI / 2;
+    camera.beta = 0.01; // Avoid 0 gimbal lock issues in ArcRotateCamera
+    camera.radius = 5.0; // zoom out high-level tactical aerial perspective
+
+    // Enable wireframe if not already enabled
+    if (!wireOn) {
+      wireOn = true;
+      document.getElementById('tog-wire').classList.add('on');
+      loadedMeshes.forEach(m => { if (m.material) m.material.wireframe = true; });
+    }
+
+    if (btn) {
+      btn.innerHTML = `<span style="display: inline-block; width: 6px; height: 6px; background-color: var(--green); border-radius: 50%; box-shadow: 0 0 6px var(--green);" id="drone-indicator"></span> DRONE INSPECT [ACTIVE]`;
+      btn.style.borderColor = 'var(--green)';
+      btn.style.color = 'var(--green)';
+    }
+  } else {
+    // Restore saved state
+    if (savedCamTarget) {
+      camera.setTarget(savedCamTarget);
+    }
+    camera.alpha = savedCamAlpha;
+    camera.beta = savedCamBeta;
+    camera.radius = savedCamRadius;
+
+    // Restore wireframe status
+    wireOn = savedWireframeState;
+    document.getElementById('tog-wire').classList.toggle('on', wireOn);
+    loadedMeshes.forEach(m => { if (m.material) m.material.wireframe = wireOn; });
+
+    if (btn) {
+      btn.innerHTML = `<span style="display: inline-block; width: 6px; height: 6px; background-color: var(--dim); border-radius: 50%;" id="drone-indicator"></span> DRONE INSPECT [OFF]`;
+      btn.style.borderColor = 'var(--purple)';
+      btn.style.color = 'var(--purple)';
+    }
+  }
+}
+
+// ── LIGHTS ──────────────────────────────────────────────────────
+function setupLights(rig) {
+  scene.lights.forEach(l => l.dispose());
+  const r = RIGS[rig] || RIGS.combat;
+
+  const key = new BABYLON.DirectionalLight('key', new BABYLON.Vector3(-1,-2,-1), scene);
+  key.intensity = 2.5;
+  key.diffuse = new BABYLON.Color3(...r.key);
+
+  const fill = new BABYLON.HemisphericLight('fill', new BABYLON.Vector3(0,1,0), scene);
+  fill.intensity = 1.2;
+  fill.diffuse = new BABYLON.Color3(...r.fill);
+  fill.groundColor = new BABYLON.Color3(0.03, 0.03, 0.05);
+
+  const rim = new BABYLON.DirectionalLight('rim', new BABYLON.Vector3(1,-1,2), scene);
+  rim.intensity = 1.6;
+  rim.diffuse = new BABYLON.Color3(...r.rim);
+}
+
+function setRig(rig, el) {
+  setupLights(rig);
+  document.querySelectorAll('.rig-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── GROUND ──────────────────────────────────────────────────────
+function setupGround() {
+  ground = BABYLON.MeshBuilder.CreateGround('ground', { width: 24, height: 24 }, scene);
+  const mat = new BABYLON.StandardMaterial('gm', scene);
+  mat.diffuseColor = new BABYLON.Color3(0.03, 0.06, 0.10);
+  mat.specularColor = new BABYLON.Color3(0, 0, 0);
+  mat.emissiveColor = new BABYLON.Color3(0.015, 0.04, 0.06);
+  ground.material = mat;
+  ground.isPickable = false;
+}
+
+// ── FPS COUNTER ─────────────────────────────────────────────────
+function setupFPSCounter() {
+  setInterval(() => {
+    if (engine) document.getElementById('s-fps').innerText = Math.round(engine.getFps());
+  }, 500);
+}
+
+// ── DROP ZONE ───────────────────────────────────────────────────
+function setupDropZone() {
+  const box = document.getElementById('dz-box');
+  box.addEventListener('dragover', e => { e.preventDefault(); box.classList.add('over'); });
+  box.addEventListener('dragleave', () => box.classList.remove('over'));
+  box.addEventListener('drop', e => {
+    e.preventDefault(); box.classList.remove('over');
+    const f = e.dataTransfer.files[0];
+    if (f) loadGLBFile(f);
+  });
+}
+
+function showDropZone() {
+  document.getElementById('drop-zone').classList.remove('hidden');
+}
+
+function handleFile(e) {
+  const f = e.target.files[0];
+  if (f) loadGLBFile(f);
+}
+
+function loadCDN(filename) {
+  document.getElementById('drop-zone').classList.add('hidden');
+  showLoader('Connecting to CDN...');
+  const url = CDN_BASE + filename;
+  loadGLBUrl(url, filename.replace('.glb', '').replace('.gltf', ''));
+}
+
+// ── GLB LOADER ──────────────────────────────────────────────────
+function loadGLBFile(file) {
+  document.getElementById('drop-zone').classList.add('hidden');
+  showLoader('Parsing operative...');
+  clearScene();
+  const url = URL.createObjectURL(file);
+  loadGLBUrl(url, file.name.replace('.glb', '').replace('.gltf', ''), () => URL.revokeObjectURL(url));
+}
+
+function loadGLBUrl(url, name, onDone) {
+  setLoaderPct(15, 'Decoding mesh data...');
+
+  BABYLON.SceneLoader.ImportMeshAsync('', '', url, scene, evt => {
+    if (evt.lengthComputable) {
+      setLoaderPct(15 + Math.round((evt.loaded / evt.total) * 60), 'Loading geometry...');
+    }
+  }, '.glb').then(result => {
+    if (onDone) onDone();
+    setLoaderPct(80, 'Building animation library...');
+
+    loadedMeshes = result.meshes;
+    loadedMeshes.forEach(m => { if (m.material) m.material.wireframe = wireOn; });
+    if (heatmapOn) applyHeatmap();
+    loadedSkeletons = result.skeletons;
+    animGroups = result.animationGroups;
+
+    if (loadedMeshes.length > 0) autoCenter(loadedMeshes);
+    buildAnimList(animGroups);
+    updateStats(loadedMeshes, loadedSkeletons, animGroups);
+
+    // Set operative name
+    const displayName = name.toUpperCase().replace(/-/g, ' ').replace(/_/g, ' ');
+    document.getElementById('operative-status').innerText = 'OPERATIVE LOADED — ' + name + '.GLB';
+    document.getElementById('operative-status').classList.add('live');
+
+    // Play default idle
+    const defaultAnim = findAnimByKeys(['cst-ert-idle-b', 'idle-b', 'Idle_0', 'AS_UE5_MF_Idle']);
+    if (defaultAnim) {
+      playAnim(defaultAnim);
+    } else if (animGroups.length > 0) {
+      playAnim(animGroups[0]);
+    }
+
+    setLoaderPct(100, 'Operative loaded.');
+    setTimeout(hideLoader, 500);
+  }).catch(err => {
+    console.error('[VIEWER] Load error:', err);
+    hideLoader();
+    showDropZone();
+    alert('Load failed: ' + err.message);
+  });
+}
+
+function clearScene() {
+  scene.stopAllAnimations();
+  animGroups.forEach(ag => ag.stop());
+  animGroups = [];
+  currentAnim = null;
+  loadedMeshes.forEach(m => m.dispose && m.dispose());
+  loadedMeshes = [];
+  if (skeletonViewer) { skeletonViewer.dispose(); skeletonViewer = null; }
+  loadedSkeletons = [];
+  document.getElementById('anim-list').innerHTML =
+    '<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:var(--dim);">Loading...</div>';
+  resetTimeline();
+}
+
+// ── AUTO CENTER ─────────────────────────────────────────────────
+function autoCenter(meshes) {
+  let minY = Infinity, maxY = -Infinity;
+  meshes.forEach(m => {
+    if (!m.getBoundingInfo) return;
+    const bb = m.getBoundingInfo().boundingBox;
+    minY = Math.min(minY, bb.minimumWorld.y);
+    maxY = Math.max(maxY, bb.maximumWorld.y);
+  });
+  const height = maxY - minY;
+  const root = meshes.find(m => !m.parent) || meshes[0];
+  if (root && minY < 0) root.position.y -= minY;
+  camera.radius = Math.max(height * 1.4, 2.5);
+  camera.setTarget(new BABYLON.Vector3(0, height * 0.44, 0));
+}
+
+// ── ANIMATION LIST ──────────────────────────────────────────────
+function buildAnimList(groups) {
+  const list = document.getElementById('anim-list');
+  list.innerHTML = '';
+
+  if (groups.length === 0) {
+    list.innerHTML = '<div style="font-family:\'Share Tech Mono\',monospace;font-size:9px;color:var(--dim);">No animation groups</div>';
+    return;
+  }
+
+  groups.forEach((ag, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'anim-btn' + (i === 0 ? ' active' : '');
+
+    // Color-code by type
+    const n = ag.name.toLowerCase();
+    if (n.includes('fist') || n.includes('attack')) btn.classList.add('combat');
+    else if (n.includes('fire') || n.includes('osu-prime')) btn.classList.add('fire');
+    else if (n.includes('walk') || n.includes('run') || n.includes('jump') || n.includes('slide')) btn.classList.add('move');
+    else if (n.includes('idle')) btn.classList.add('idle');
+    else if (n.includes('osu') || n.includes('loadout') || n.includes('deploy')) btn.classList.add('osu');
+
+    btn.innerText = ag.name;
+    btn.title = `Frames: ${Math.round(ag.from)}–${Math.round(ag.to)}`;
+    btn.onclick = () => {
+      document.querySelectorAll('.anim-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      playAnim(ag);
+      updatePCState('MANUAL', ag.name);
+    };
+    list.appendChild(btn);
+  });
+}
+
+// ── ANIMATION PLAYBACK ──────────────────────────────────────────
+function playAnim(ag) {
+  if (!ag) return;
+  animGroups.forEach(g => g.stop());
+  currentAnim = ag;
+  const speed = parseFloat(document.getElementById('speed-slider').value);
+  ag.start(isLooping, speed);
+  isPlaying = true;
+  document.getElementById('play-btn').innerText = '⏸';
+  document.getElementById('tl-anim-name').innerText = ag.name;
+  document.getElementById('tl-frames').innerText = `0 / ${Math.round(ag.to - ag.from)}`;
+  document.getElementById('s-anim').innerText = ag.name;
+
+  // Highlight active button
+  document.querySelectorAll('.anim-btn').forEach(b => {
+    b.classList.toggle('active', b.innerText === ag.name);
+  });
+}
+
+function findAnimByKeys(keys) {
+  for (const key of keys) {
+    const match = animGroups.find(ag =>
+      ag.name.toLowerCase().includes(key.toLowerCase())
+    );
+    if (match) return match;
+  }
+  return null;
+}
+
+function findAnimForAction(actionKeys) {
+  return findAnimByKeys(actionKeys);
+}
+
+// ── PLAYER CONTROLLER ───────────────────────────────────────────
+function setupKeyboard() {
+  window.addEventListener('keydown', e => {
+    const k = e.key.toLowerCase();
+    if (k === 'tab') { e.preventDefault(); toggleControllerMode(); return; }
+    if (!controllerMode) return;
+    if (keys[k]) return; // already pressed
+    keys[k] = true;
+    handleKeyAction(k, true);
+  });
+
+  window.addEventListener('keyup', e => {
+    const k = e.key.toLowerCase();
+    keys[k] = false;
+    if (!controllerMode) return;
+    handleKeyRelease(k);
+  });
+}
+
+function handleKeyAction(k, down) {
+  if (!down) return;
+
+  // Movement
+  if (k === 'w') {
+    const anim = findAnimForAction(KEY_ANIM_MAP['w']);
+    if (anim) { playAnim(anim); updatePCState('WALK FWD', anim.name); }
+  }
+  else if (k === 's') {
+    const anim = findAnimForAction(KEY_ANIM_MAP['s']);
+    if (anim) { playAnim(anim); updatePCState('WALK BACK', anim.name); }
+  }
+  else if (k === 'a') {
+    const anim = findAnimForAction(KEY_ANIM_MAP['a']);
+    if (anim) { playAnim(anim); updatePCState('STRAFE L', anim.name); }
+  }
+  else if (k === 'd') {
+    const anim = findAnimForAction(KEY_ANIM_MAP['d']);
+    if (anim) { playAnim(anim); updatePCState('STRAFE R', anim.name); }
+  }
+  // Jump
+  else if (k === ' ') {
+    const anim = findAnimForAction(KEY_ANIM_MAP[' ']);
+    if (anim) { playAnim(anim); updatePCState('JUMP', anim.name); }
+  }
+  // Fist combat
+  else if (k === 'f') {
+    const variants = ['fist-attack-a','fist-attack-b','fist-attack-c','fist-attack-d'];
+    const idx = Math.floor(Math.random() * variants.length);
+    const anim = findAnimForAction([variants[idx], 'fist-attack', 'attack']);
+    if (anim) { playAnim(anim); updatePCState('FIST ATTACK', anim.name, 'combat'); }
+  }
+  // Fire cycle — G cycles slow → medium → fast
+  else if (k === 'g') {
+    const fireKeys = ['g_slow', 'g_medium', 'g_fast'];
+    const anim = findAnimForAction(KEY_ANIM_MAP[fireKeys[fireCycle]]);
+    const fireLabels = ['FIRE SLOW', 'FIRE MEDIUM', 'FIRE FAST'];
+    if (anim) { playAnim(anim); updatePCState(fireLabels[fireCycle], anim.name, 'fire'); }
+    fireCycle = (fireCycle + 1) % 3;
+  }
+  // Interact / idle-b
+  else if (k === 'e') {
+    const anim = findAnimForAction(KEY_ANIM_MAP['e']);
+    if (anim) { playAnim(anim); updatePCState('INTERACT', anim.name); }
+  }
+  // OSU ability / loadout
+  else if (k === 'q') {
+    const anim = findAnimForAction(KEY_ANIM_MAP['ability']);
+    if (anim) { playAnim(anim); updatePCState('OSU ABILITY', anim.name, 'osu'); }
+  }
+  // Freight UXI / weapon switch
+  else if (k === 'x') {
+    const anim = findAnimForAction(KEY_ANIM_MAP['x']);
+    if (anim) { playAnim(anim); updatePCState('LOADOUT DEPLOY', anim.name, 'osu'); }
+  }
+}
+
+function handleKeyRelease(k) {
+  // On release of movement keys, return to idle
+  if (['w','s','a','d'].includes(k)) {
+    // Check if any other movement key still held
+    const moving = keys['w'] || keys['s'] || keys['a'] || keys['d'];
+    if (!moving) {
+      const idle = findAnimForAction(KEY_ANIM_MAP['idle']);
+      if (idle) { playAnim(idle); updatePCState('IDLE', idle.name); }
+    }
+  }
+}
+
+function updateController() {
+  // Continuous held-key check for smooth movement feedback
+  // Visual state updates only — no physics needed for viewer
+}
+
+function toggleControllerMode() {
+  controllerMode = !controllerMode;
+  const btn = document.getElementById('ctrl-toggle');
+  const modeEl = document.getElementById('pc-mode');
+
+  if (controllerMode) {
+    btn.innerText = 'CONTROLLER MODE';
+    btn.classList.add('active');
+    modeEl.innerText = 'CONTROLLER ACTIVE';
+    document.getElementById('pc-state').innerText = 'IDLE';
+    // Detach orbit camera mouse control while in controller mode
+    // (camera still usable with right-click drag)
+    updatePCState('IDLE', '');
+  } else {
+    btn.innerText = 'VIEWER MODE';
+    btn.classList.remove('active');
+    modeEl.innerText = 'ORBIT CAM';
+    updatePCState('VIEWER', '');
+    // Return to idle animation
+    const idle = findAnimForAction(KEY_ANIM_MAP['idle']);
+    if (idle) playAnim(idle);
+  }
+}
+
+function updatePCState(state, action, type) {
+  document.getElementById('pc-state').innerText = state;
+  document.getElementById('pc-state').className = 'hud-state-val' + (type ? ' ' + type : '');
+  document.getElementById('pc-action').innerText = action || '—';
+  document.getElementById('pc-action').className = 'hud-state-val' + (type ? ' ' + type : '');
+}
+
+// ── OSU FACE VIEWER ─────────────────────────────────────────────
+let osuEngine, osuScene, osuCamera;
+
+function loadOSUFace(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const faceCanvas = document.getElementById('osu-face-canvas');
+  document.getElementById('osu-face-status').innerText = 'LOADING FACE MESH...';
+
+  if (!osuEngine) {
+    osuEngine = new BABYLON.Engine(faceCanvas, true, { antialias: true });
+    osuScene = new BABYLON.Scene(osuEngine);
+    osuScene.clearColor = new BABYLON.Color4(0.02, 0.01, 0.04, 1);
+
+    osuCamera = new BABYLON.ArcRotateCamera(
+      'osuCam', -Math.PI/2, Math.PI/2.4, 0.5,
+      new BABYLON.Vector3(0, 1.6, 0), osuScene
+    );
+    osuCamera.attachControl(faceCanvas, true);
+    osuCamera.lowerRadiusLimit = 0.2;
+    osuCamera.upperRadiusLimit = 2;
+
+    const keyL = new BABYLON.DirectionalLight('osuKey', new BABYLON.Vector3(-1,-1,-1), osuScene);
+    keyL.intensity = 2;
+    keyL.diffuse = new BABYLON.Color3(0.6, 0.2, 1.0); // purple tint
+
+    const fillL = new BABYLON.HemisphericLight('osuFill', new BABYLON.Vector3(0,1,0), osuScene);
+    fillL.intensity = 0.8;
+    fillL.diffuse = new BABYLON.Color3(0.3, 0.1, 0.5);
+
+    osuEngine.runRenderLoop(() => osuScene.render());
+  }
+
+  // Clear previous face mesh
+  osuScene.meshes.forEach(m => m.dispose());
+
+  const url = URL.createObjectURL(file);
+  BABYLON.SceneLoader.ImportMeshAsync('', '', url, osuScene, null, '.glb').then(result => {
+    URL.revokeObjectURL(url);
+
+    // Auto-center on face
+    if (result.meshes.length > 0) {
+      let maxY = -Infinity;
+      result.meshes.forEach(m => {
+        if (m.getBoundingInfo) {
+          maxY = Math.max(maxY, m.getBoundingInfo().boundingBox.maximumWorld.y);
+        }
+      });
+      osuCamera.setTarget(new BABYLON.Vector3(0, maxY * 0.75, 0));
+      osuCamera.radius = maxY * 0.6;
+    }
+
+    // Play first animation if available (morph targets)
+    if (result.animationGroups.length > 0) {
+      result.animationGroups[0].start(true);
+      document.getElementById('osu-expr').innerText = result.animationGroups[0].name.toUpperCase();
+    }
+
+    document.getElementById('osu-face-status').innerText = 'OSU FACE MESH ACTIVE';
+    document.getElementById('osu-cql').innerText = 'COGNITIVE LAYER ONLINE';
+  }).catch(err => {
+    document.getElementById('osu-face-status').innerText = 'LOAD FAILED — CHECK GLB';
+    console.error('[OSU FACE]', err);
+  });
+}
+
+// ── STATS ───────────────────────────────────────────────────────
+function updateStats(meshes, skeletons, anims) {
+  const polys = meshes.reduce((a, m) => a + (m.getTotalVertices ? m.getTotalVertices() : 0), 0);
+  const bones = skeletons.reduce((a, s) => a + (s.bones ? s.bones.length : 0), 0);
+  const mc = meshes.filter(m => m.getTotalVertices && m.getTotalVertices() > 0).length;
+  document.getElementById('s-mesh').innerText = mc;
+  document.getElementById('s-bones').innerText = bones;
+  document.getElementById('s-polys').innerText = polys > 999 ? (polys/1000).toFixed(1)+'k' : polys;
+}
+
+// ── TOGGLES ─────────────────────────────────────────────────────
+function toggleLoop() {
+  isLooping = !isLooping;
+  document.getElementById('tog-loop').classList.toggle('on', isLooping);
+  if (currentAnim && isPlaying) {
+    const speed = parseFloat(document.getElementById('speed-slider').value);
+    currentAnim.stop(); currentAnim.start(isLooping, speed);
+  }
+}
+
+function toggleWireframe() {
+  wireOn = !wireOn;
+  document.getElementById('tog-wire').classList.toggle('on', wireOn);
+  loadedMeshes.forEach(m => { if (m.material) m.material.wireframe = wireOn; });
+}
+
+function toggleSkeleton() {
+  skelOn = !skelOn;
+  document.getElementById('tog-skel').classList.toggle('on', skelOn);
+  if (skelOn && loadedSkeletons.length > 0 && !skeletonViewer) {
+    skeletonViewer = new BABYLON.Debug.SkeletonViewer(
+      loadedSkeletons[0], loadedMeshes[0], scene, true, 3, {
+        pauseAnimations: false, returnToRest: false,
+        computeBonesUsingShaders: true,
+        displayMode: BABYLON.Debug.SkeletonViewer.DISPLAY_SPHERE_AND_SPURS,
+        sphereBaseSize: 0.003, sphereScaleUnit: 5,
+      }
+    );
+  }
+  if (skeletonViewer) skeletonViewer.isEnabled = skelOn;
+}
+
+// ── GRID CONTROLLERS ─────────────────────────────────────────────
+function toggleGrid() {
+  gridOn = !gridOn;
+  document.getElementById('tog-grid').classList.toggle('on', gridOn);
+  if (ground) ground.isVisible = gridOn;
+}
+
+// ── VERTEX DENSITY HEATMAP ───────────────────────────────────────
+function getHeatmapMaterial() {
+  if (!heatmapMat) {
+    heatmapMat = new BABYLON.StandardMaterial("heatmapMat", scene);
+    heatmapMat.useVertexColors = true;
+    heatmapMat.emissiveColor = new BABYLON.Color3(0.18, 0.18, 0.18);
+    heatmapMat.diffuseColor = new BABYLON.Color3(0.8, 0.8, 0.8);
+    heatmapMat.backFaceCulling = false;
+  }
+  return heatmapMat;
+}
+
+function calculateVertexDensityColors(mesh) {
+  const positions = mesh.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+  const indices = mesh.getIndices();
+  if (!positions || !indices || indices.length === 0) return;
+
+  const vertexCount = positions.length / 3;
+  const neighborDistances = Array.from({ length: vertexCount }, () => []);
+  
+  for (let i = 0; i < indices.length; i += 3) {
+    const idx0 = indices[i];
+    const idx1 = indices[i + 1];
+    const idx2 = indices[i + 2];
+    
+    if (idx0 >= vertexCount || idx1 >= vertexCount || idx2 >= vertexCount) continue;
+    
+    const getDist = (a, b) => {
+      const dx = positions[a*3] - positions[b*3];
+      const dy = positions[a*3+1] - positions[b*3+1];
+      const dz = positions[a*3+2] - positions[b*3+2];
+      return Math.sqrt(dx*dx + dy*dy + dz*dz);
+    };
+    
+    const d01 = getDist(idx0, idx1);
+    const d12 = getDist(idx1, idx2);
+    const d20 = getDist(idx2, idx0);
+    
+    neighborDistances[idx0].push(d01, d20);
+    neighborDistances[idx1].push(d01, d12);
+    neighborDistances[idx2].push(d12, d20);
+  }
+  
+  const densities = new Float32Array(vertexCount);
+  let maxDensity = 0.0001;
+  let minDensity = Infinity;
+  
+  for (let i = 0; i < vertexCount; i++) {
+    const dists = neighborDistances[i];
+    if (dists.length > 0) {
+      const sum = dists.reduce((acc, val) => acc + val, 0);
+      const avgDist = sum / dists.length;
+      densities[i] = avgDist > 0.00001 ? (1.0 / avgDist) : 0;
+    } else {
+      densities[i] = 0;
+    }
+    if (densities[i] > maxDensity) maxDensity = densities[i];
+    if (densities[i] < minDensity) minDensity = densities[i];
+  }
+  
+  const colors = [];
+  const range = maxDensity - minDensity;
+  
+  for (let i = 0; i < vertexCount; i++) {
+    let t = range > 0.00001 ? (densities[i] - minDensity) / range : 0.5;
+    t = Math.max(0, Math.min(1, t));
+    
+    let r = 0, g = 0, b = 0;
+    if (t < 0.25) { 
+      b = 1.0;
+      g = t / 0.25;
+    } else if (t < 0.5) { 
+      g = 1.0;
+      b = 1.0 - (t - 0.25) / 0.25;
+    } else if (t < 0.75) { 
+      r = (t - 0.5) / 0.25;
+      g = 1.0;
+    } else { 
+      r = 1.0;
+      g = 1.0 - (t - 0.75) / 0.25;
+    }
+    
+    colors.push(r, g, b, 1.0);
+  }
+  
+  mesh._vertexDensityColors = colors;
+}
+
+function applyHeatmap() {
+  loadedMeshes.forEach(m => {
+    if (m.getTotalVertices && m.getTotalVertices() > 0) {
+      if (heatmapOn) {
+        if (m.material && m.material.name !== "heatmapMat") {
+          m._savedMaterial = m.material;
+        }
+        if (!m._vertexDensityColors) {
+          calculateVertexDensityColors(m);
+        }
+        if (m._vertexDensityColors) {
+          m.setVerticesData(BABYLON.VertexBuffer.ColorKind, m._vertexDensityColors);
+          m.material = getHeatmapMaterial();
+        }
+      } else {
+        if (m._savedMaterial) {
+          m.material = m._savedMaterial;
+        }
+        if (m.isVerticesDataPresent(BABYLON.VertexBuffer.ColorKind)) {
+          m.removeVerticesData(BABYLON.VertexBuffer.ColorKind);
+        }
+      }
+    }
+  });
+}
+
+function toggleHeatmap() {
+  heatmapOn = !heatmapOn;
+  const btn = document.getElementById('tog-heatmap');
+  if (btn) {
+    btn.classList.toggle('on', heatmapOn);
+    btn.innerText = heatmapOn ? 'HEATMAP OVERLAY [ON]' : 'HEATMAP OVERLAY [OFF]';
+  }
+  applyHeatmap();
+}
+
+function setSpeed(val) {
+  document.getElementById('speed-val').innerText = parseFloat(val).toFixed(1) + 'x';
+  if (currentAnim) currentAnim.speedRatio = parseFloat(val);
+}
+
+function togglePlay() {
+  if (!currentAnim) return;
+  if (isPlaying) {
+    currentAnim.pause(); isPlaying = false;
+    document.getElementById('play-btn').innerText = '▶';
+  } else {
+    currentAnim.play(isLooping); isPlaying = true;
+    document.getElementById('play-btn').innerText = '⏸';
+  }
+}
+
+// ── TIMELINE ────────────────────────────────────────────────────
+function updateTimeline() {
+  if (!currentAnim || !isPlaying) return;
+  const ag = currentAnim;
+  const range = ag.to - ag.from;
+  if (range <= 0) return;
+  let frame = 0;
+  if (ag.targetedAnimations && ag.targetedAnimations[0]) {
+    const ta = ag.targetedAnimations[0];
+    if (ta.animation && ta.animation.currentFrame !== undefined) {
+      frame = ta.animation.currentFrame - ag.from;
+    }
+  }
+  const pct = Math.max(0, Math.min(100, (frame / range) * 100));
+  document.getElementById('tl-fill').style.width = pct + '%';
+  document.getElementById('tl-thumb').style.left = pct + '%';
+  document.getElementById('tl-frames').innerText = `${Math.round(frame)} / ${Math.round(range)}`;
+}
+
+function resetTimeline() {
+  document.getElementById('tl-fill').style.width = '0%';
+  document.getElementById('tl-thumb').style.left = '0%';
+  document.getElementById('tl-frames').innerText = '0 / 0';
+  document.getElementById('tl-anim-name').innerText = '—';
+}
+
+function seekTL(e) {
+  if (!currentAnim) return;
+  const track = document.getElementById('tl-track');
+  const rect = track.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  currentAnim.goToFrame(currentAnim.from + pct * (currentAnim.to - currentAnim.from));
+}
+
+// ── LOADER UI ───────────────────────────────────────────────────
+function showLoader(msg) {
+  const el = document.getElementById('loader');
+  el.style.display = 'flex';
+  document.getElementById('loader-msg').innerText = msg;
+  document.getElementById('loader-fill').style.width = '5%';
+}
+function setLoaderPct(pct, msg) {
+  document.getElementById('loader-fill').style.width = pct + '%';
+  document.getElementById('loader-msg').innerText = msg;
+}
+function hideLoader() {
+  document.getElementById('loader').style.display = 'none';
+}
+
+// ── BOOT ────────────────────────────────────────────────────────
+window.addEventListener('load', init);
+</script>
+</body>
+</html>

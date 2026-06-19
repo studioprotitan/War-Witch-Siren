@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Share+Tech+Mono&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-cinzel: "Cinzel", serif;
+  --font-cinzel-deco: "Cinzel Decorative", serif;
+  --font-garamond: "EB Garamond", Georgia, serif;
+  --font-share: "Share Tech Mono", monospace;
+  
+  --color-forge: #c46a1a;
+  --color-forge-d: #6b3510;
+  --color-forge-dd: #2a1508;
+  --color-gold-abyssum: #a67c2a;
+  --color-teal-abyssum: #1a9490;
+  --color-teal-abyssum-d: #0d4a48;
+  --color-ash-abyssum: #8b7d6b;
+  --color-bg-abyssum: #0d0b08;
+}
+
+@layer base {
+  body {
+    background-color: #050505;
+    color: #e0e0e0;
+  }
+}
+
+/* Animations for slide-in and custom fade items */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+/* Stock Ticker Sliding Layout Animation */
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-ticker {
+  display: inline-flex;
+  animation: ticker 40s linear infinite;
+}
+
+.animate-ticker:hover {
+  animation-play-state: paused;
+}
+
+/* Infinite Lore Carousel Horizontal Animation */
+@keyframes carouselSlide {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-carousel {
+  display: inline-flex;
+  animation: carouselSlide 45s linear infinite;
+}
+
+.animate-carousel:hover {
+  animation-play-state: paused;
+}
+
