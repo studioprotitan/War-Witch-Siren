@@ -256,8 +256,10 @@ export default function HeroLandingPage({ onEnter }: HeroLandingPageProps) {
       oscillatorsRef.current.forEach(osc => {
         try { osc.stop(); } catch (e) {}
       });
-      if (audioCtxRef.current) {
-        try { audioCtxRef.current.close(); } catch(e) {}
+      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+        try {
+          audioCtxRef.current.close().catch(() => {});
+        } catch (e) {}
       }
     };
   }, [isAudioActive]);

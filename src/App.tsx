@@ -357,9 +357,160 @@ const loreCards = [
   }
 ];
 
+const LEY_LINE_FRAGMENTS_POOL = [
+  {
+    title: "Jane Sector #194 — Steam Chamber Leak Ledger",
+    type: "node",
+    sector: "JANE DISTRICT",
+    description: "Operator logs confirm a localized Siren core residue leakage inside physical valve conduit #08B. Recommends complete geothermal purging of the auxiliary pipes."
+  },
+  {
+    title: "CST Operative Lost Logs — Signal Echo",
+    type: "lore",
+    sector: "CORGEMONT STATION",
+    description: "The SWC Witches did not retreat when the Styx gateway collapsed. High-pitch resonant frequencies continue to mirror on automated sector surveillance lines."
+  },
+  {
+    title: "Pre-Corruption Crystalline Basalt Fragment",
+    type: "node",
+    sector: "SLAG BASIN",
+    description: "Chemical composition analysis reveals silicate matrix combined with a high geothermal carbon envelope and an anomalous local temporal shift of -1.4 seconds."
+  },
+  {
+    title: "Anomalous Ley Line Signature ⬡94X",
+    type: "lore",
+    sector: "LEYLINE GRID",
+    description: "A non-repeating sub-audible physical pulse signature detected in District Sector 8. Pattern perfectly mirrors pre-corruption CST-ERT emergency responder encryption."
+  },
+  {
+    title: "Siren Biomech Hatchery Node Log",
+    type: "node",
+    sector: "SIREN BIOMECH BASIN",
+    description: "Decayed carbon-chitin mechanical hull. Embedded records show manual neural-link calibration files dating back to the pre-Styx exploration era."
+  },
+  {
+    title: "Abex Ward Sovereign Credit Draft",
+    type: "lore",
+    sector: "ABEX WARD BANK",
+    description: "Cryptographic escrow draft authorizing a priority transfer of 100,000 LEY to Steamfitters Guild for secret armor trials on the Siege-Class Golems."
+  },
+  {
+    title: "Scout Droid Telemetry Stream HD",
+    type: "node",
+    sector: "NORTHERN WASTELAND",
+    description: "Radar array records high-altitude atmospheric dust combined with active geothermal lightning storms. Threat level evaluation: Extreme. Avoid direct rail flight."
+  },
+  {
+    title: "Rogue Glitch Goblin Sector Coords",
+    type: "lore",
+    sector: "JANE SCRAP FIELDS",
+    description: "Discovered an encrypted navigational channel detailing a secret scrap metal printyard operated by rogue steamfitters. Magnetospheric readings fluctuate severely here."
+  }
+];
+
+const playLeyScanBeep = () => {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+    
+    // High-tech sci-fi rising beep
+    const time = ctx.currentTime;
+    
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(440, time);
+    osc.frequency.exponentialRampToValueAtTime(880, time + 0.3);
+    
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.08, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.3);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start(time);
+    osc.stop(time + 0.35);
+    
+    // Close the context safely after sound finishes
+    setTimeout(() => {
+      if (ctx.state !== 'closed') {
+        ctx.close().catch(() => {});
+      }
+    }, 500);
+  } catch (e) {
+    console.warn('Audio feedback failed:', e);
+  }
+};
+
 export default function App() {
   // App primary states
   const [activeTab, setActiveTab] = useState<'reactor' | 'golemGuide' | 'forgeDeploy' | 'cineCity'>('reactor');
+
+  // Ley Line Scanning States
+  const [isScanningLeyLines, setIsScanningLeyLines] = useState(false);
+  const [leyScanningStep, setLeyScanningStep] = useState('');
+  const [leyScanningProgress, setLeyScanningProgress] = useState(0);
+  const [detectedLeyFragments, setDetectedLeyFragments] = useState<{
+    id: string;
+    title: string;
+    type: 'lore' | 'node';
+    sector: string;
+    description: string;
+    timestamp: string;
+  }[]>([]);
+  const [lastDetectedFragment, setLastDetectedFragment] = useState<any | null>(null);
+
+  const handleTriggerLeyScan = () => {
+    if (isScanningLeyLines) return;
+    setIsScanningLeyLines(true);
+    setLeyScanningProgress(0);
+    setLeyScanningStep('EMITTING RESONANCE PULSES...');
+    
+    let currentProgress = 0;
+    const interval = setInterval(() => {
+      currentProgress += Math.floor(Math.random() * 12) + 5;
+      if (currentProgress >= 100) {
+        currentProgress = 100;
+        clearInterval(interval);
+        
+        // Pick a random fragment from LEY_LINE_FRAGMENTS_POOL
+        const randomIndex = Math.floor(Math.random() * LEY_LINE_FRAGMENTS_POOL.length);
+        const originalFragment = LEY_LINE_FRAGMENTS_POOL[randomIndex];
+        
+        const newFragment = {
+          id: `LC-${Math.floor(100000 + Math.random() * 900000)}`,
+          title: originalFragment.title,
+          type: originalFragment.type as 'lore' | 'node',
+          sector: originalFragment.sector,
+          description: originalFragment.description,
+          timestamp: new Date().toISOString()
+        };
+        
+        setDetectedLeyFragments(prev => [newFragment, ...prev]);
+        setLastDetectedFragment(newFragment);
+        setIsScanningLeyLines(false);
+        playLeyScanBeep();
+      } else {
+        setLeyScanningProgress(currentProgress);
+        // Dynamically update scanning status based on progress
+        if (currentProgress < 20) {
+          setLeyScanningStep('EMITTING RESONANCE PULSES...');
+        } else if (currentProgress < 45) {
+          setLeyScanningStep('ALIGNING SECTOR SATELLITES...');
+        } else if (currentProgress < 65) {
+          setLeyScanningStep('HARMONIZING COGNITIVE INTERFACE...');
+        } else if (currentProgress < 85) {
+          setLeyScanningStep('CORRELATING DATABASE MATRIX...');
+        } else {
+          setLeyScanningStep('EXTRACTING SIGNAL SHARD...');
+        }
+      }
+    }, 150);
+  };
   const [hasEntered, setHasEntered] = useState<boolean>(false);
   const [activeModel, setActiveModel] = useState<MeshModel | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -1044,6 +1195,18 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* Active scanner beam sweep line & warning tint */}
+                {isScanningLeyLines && (
+                  <div className="absolute inset-x-0 h-1 bg-[#c46a1a] shadow-[0_0_12px_#c46a1a] z-30 pointer-events-none animate-ley-scanner-sweep" />
+                )}
+                {isScanningLeyLines && (
+                  <div className="absolute inset-0 bg-[#c46a1a]/5 z-25 pointer-events-none flex flex-col items-center justify-center select-none">
+                    <span className="text-[10px] font-mono text-[#c46a1a] tracking-[0.3em] font-extrabold drop-shadow-[0_0_5px_rgba(196,106,26,0.6)] animate-pulse uppercase">
+                      ACTIVE LEY LINE SCAN
+                    </span>
+                  </div>
+                )}
+
                 {/* Reconstruction progress blur screen */}
                 {isReconstructing && (
                   <div className="absolute inset-0 bg-[#040302]/95 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center z-20 overflow-y-auto">
@@ -1278,6 +1441,120 @@ export default function App() {
                 <Layers className="w-3.5 h-3.5 text-[#c46a1a]" />
                 <span>PROCESS IN THE REACTOR FURNACE</span>
               </button>
+
+              {/* Ley Line Telemetry Scanner Widget */}
+              <div className="bg-[#040302] border border-[#211a12] rounded-lg p-2.5 space-y-2 shrink-0 flex flex-col justify-between">
+                <div className="flex justify-between items-center select-none">
+                  <span className="text-[7.5px] text-slate-500 font-mono tracking-widest uppercase font-bold flex items-center gap-1">
+                    <Compass className={`w-3 h-3 text-[#c46a1a] ${isScanningLeyLines ? 'animate-spin' : ''}`} />
+                    ⬡ LEY LINE TELEMETRY SCANNER
+                  </span>
+                  <span className="text-[7px] text-[#c46a1a] font-mono font-extrabold uppercase bg-[#c46a1a]/10 px-1 py-0.2 rounded border border-[#c46a1a]/20">
+                    STATUS: {isScanningLeyLines ? 'SCANNING...' : 'READY'}
+                  </span>
+                </div>
+
+                {isScanningLeyLines ? (
+                  <div className="space-y-1.5 py-1">
+                    <div className="flex justify-between items-center text-[7.5px] font-mono">
+                      <span className="text-[#c46a1a] font-semibold animate-pulse">{leyScanningStep}</span>
+                      <span className="text-white font-bold">{leyScanningProgress}%</span>
+                    </div>
+                    <div className="w-full bg-[#120d09] h-1 rounded-full overflow-hidden border border-[#2e2418]">
+                      <div 
+                        className="bg-amber-500 h-full rounded-full transition-all duration-100"
+                        style={{ width: `${leyScanningProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleTriggerLeyScan}
+                      disabled={isScanningLeyLines}
+                      className="flex-1 py-1.5 rounded-md text-[7.5px] font-mono font-bold tracking-widest uppercase transition bg-amber-950/20 hover:bg-amber-950/40 border border-[#c46a1a]/30 text-amber-400 flex items-center justify-center gap-1 cursor-pointer active:scale-95 disabled:opacity-50"
+                    >
+                      <Compass className="w-3 h-3 text-[#c46a1a]" />
+                      <span>INITIATE LEY LINE SCAN</span>
+                    </button>
+                    {detectedLeyFragments.length > 0 && (
+                      <button
+                        onClick={() => {
+                          setLastDetectedFragment(null);
+                          setDetectedLeyFragments([]);
+                        }}
+                        className="px-2 py-1.5 rounded-md text-[7.5px] font-mono text-slate-500 border border-[#2e2418] hover:border-red-900/50 hover:text-red-400 transition cursor-pointer active:scale-95"
+                        title="Clear Scanned History"
+                      >
+                        CLEAR
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Display Last Scanned Result */}
+                {lastDetectedFragment && !isScanningLeyLines && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-2 bg-[#120d09]/85 border border-[#c46a1a]/30 rounded-md space-y-1 relative"
+                  >
+                    <div className="flex justify-between items-center text-[7px] font-mono">
+                      <span className={`font-bold uppercase tracking-wide px-1 py-0.2 rounded text-[6px] ${
+                        lastDetectedFragment.type === 'node' ? 'bg-indigo-950/45 text-indigo-400 border border-indigo-900/30' : 'bg-amber-950/45 text-amber-500 border border-amber-900/30'
+                      }`}>
+                        [{lastDetectedFragment.type === 'node' ? 'DATA NODE DETECTED' : 'LORE FRAGMENT DETECTED'}]
+                      </span>
+                      <span className="text-slate-500 font-bold">{lastDetectedFragment.sector}</span>
+                    </div>
+                    <h5 className="text-[8px] font-bold text-white uppercase tracking-wider">{lastDetectedFragment.title}</h5>
+                    <p className="text-[7.5px] text-[#a89880] leading-relaxed italic border-l-2 border-amber-600/35 pl-2">
+                      {lastDetectedFragment.description}
+                    </p>
+                    <button 
+                      onClick={() => setLastDetectedFragment(null)}
+                      className="absolute top-1 right-2 text-slate-500 hover:text-white font-mono text-[7px] p-1"
+                    >
+                      ✕
+                    </button>
+                  </motion.div>
+                )}
+
+                {/* Session scan inventory - Collapsible list */}
+                {detectedLeyFragments.length > 0 && (
+                  <div className="border-t border-[#120d09] pt-1.5 mt-1">
+                    <details className="group/details">
+                      <summary className="list-none flex justify-between items-center text-[7px] font-mono text-slate-500 cursor-pointer hover:text-white select-none">
+                        <span className="uppercase font-bold tracking-widest">
+                          VIEW DISCOVERY LOGS ({detectedLeyFragments.length})
+                        </span>
+                        <span className="text-[#c46a1a] transition-transform duration-200 group-open/details:rotate-180">
+                          ▼
+                        </span>
+                      </summary>
+                      <div className="mt-1.5 space-y-1.5 max-h-[80px] overflow-y-auto pr-1 custom-scrollbar">
+                        {detectedLeyFragments.map((frag, idx) => (
+                          <div 
+                            key={frag.id} 
+                            onClick={() => setLastDetectedFragment(frag)}
+                            className={`p-1.5 rounded border border-[#211a12] bg-[#0c0906] cursor-pointer hover:border-[#c46a1a]/40 transition text-[7px] font-mono ${
+                              lastDetectedFragment?.id === frag.id ? 'border-[#c46a1a]/60 bg-[#16110b]' : ''
+                            }`}
+                          >
+                            <div className="flex justify-between items-baseline mb-0.5">
+                              <span className={`font-black text-[6px] ${frag.type === 'node' ? 'text-indigo-400' : 'text-amber-500'}`}>
+                                {frag.id} | {frag.type.toUpperCase()}
+                              </span>
+                              <span className="text-[5.5px] text-[#8e806a]">{frag.sector}</span>
+                            </div>
+                            <p className="text-white font-bold truncate">{frag.title}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-[#2e2418] rounded-xl bg-[#030201]/40">
@@ -1587,6 +1864,21 @@ export default function App() {
         }
         .animate-ley-color-shift {
           animation: leyLineResonanceShift 7.5s linear infinite;
+        }
+        @keyframes leyScannerSweep {
+          0% {
+            top: 0%;
+          }
+          50% {
+            top: 100%;
+          }
+          100% {
+            top: 0%;
+          }
+        }
+        .animate-ley-scanner-sweep {
+          position: absolute;
+          animation: leyScannerSweep 3s ease-in-out infinite;
         }
       `}</style>
 
