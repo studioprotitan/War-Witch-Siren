@@ -175,6 +175,52 @@ input[type=range]::-webkit-slider-thumb {
 #tog-heatmap.on { border-color: #f43f5e !important; color: #f43f5e !important; }
 .tog-btn:hover { border-color: var(--cyan); color: var(--cyan); }
 
+/* Collapsible panel adjustments */
+.collapsible-trigger {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  cursor: pointer;
+}
+.collapsible-trigger:hover {
+  text-shadow: 0 0 4px var(--gold);
+}
+.panel-box.collapsed .collapsible-content {
+  display: none !important;
+}
+.panel-box.collapsed {
+  padding-bottom: 8px !important;
+}
+.panel-box.collapsed .panel-label {
+  margin-bottom: 0 !important;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+.chevron {
+  display: inline-block;
+  font-size: 8px;
+  color: var(--dim);
+  transition: transform 0.2s ease;
+}
+.panel-box.collapsed .chevron {
+  transform: rotate(-90deg);
+}
+
+#osu-face-panel.collapsed .collapsible-content {
+  display: none !important;
+}
+#osu-face-panel.collapsed {
+  padding-bottom: 8px !important;
+}
+#osu-face-panel.collapsed .osu-face-label {
+  margin-bottom: 0 !important;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+#osu-face-panel.collapsed .chevron {
+  transform: rotate(-90deg);
+}
+
 /* ── RIGHT PANEL ── */
 #right-panel {
   position: fixed; top: 54px; right: 12px;
@@ -475,25 +521,30 @@ input[type=range]::-webkit-slider-thumb {
 <div id="left-panel">
 
   <!-- ANIMATIONS -->
-  <div class="panel-box">
-    <div class="panel-label">// ANIMATIONS</div>
-    <div id="anim-list" style="max-height:220px;overflow-y:auto;">
-      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);">
-        Load operative to begin
+  <div class="panel-box collapsed" id="animations-box">
+    <div class="panel-label collapsible-trigger" onclick="toggleCollapsible('animations-box')">
+      <span>// ASH CONSTRUCT</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="collapsible-content">
+      <div id="anim-list" style="max-height:220px;overflow-y:auto;">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);">
+          Load operative to begin
+        </div>
       </div>
-    </div>
-    <div class="speed-row">
-      <span class="speed-label">SPD</span>
-      <input type="range" id="speed-slider" min="0.1" max="3" step="0.1" value="1"
-             oninput="setSpeed(this.value)">
-      <span id="speed-val">1.0x</span>
-    </div>
-    <div class="toggle-row">
-      <button class="tog-btn on" id="tog-loop" onclick="toggleLoop()">LOOP</button>
-      <button class="tog-btn" id="tog-wire" onclick="toggleWireframe()">WIRE</button>
-      <button class="tog-btn" id="tog-skel" onclick="toggleSkeleton()">SKEL</button>
-      <button class="tog-btn on" id="tog-grid" onclick="toggleGrid()">GRID</button>
-      <button class="tog-btn" id="tog-heatmap" onclick="toggleHeatmap()" style="flex: 1 1 100%; border-color: var(--orange); color: var(--gold); font-weight: bold; margin-top: 4px;">HEATMAP OVERLAY [OFF]</button>
+      <div class="speed-row">
+        <span class="speed-label">SPD</span>
+        <input type="range" id="speed-slider" min="0.1" max="3" step="0.1" value="1"
+               oninput="setSpeed(this.value)">
+        <span id="speed-val">1.0x</span>
+      </div>
+      <div class="toggle-row">
+        <button class="tog-btn on" id="tog-loop" onclick="toggleLoop()">LOOP</button>
+        <button class="tog-btn" id="tog-wire" onclick="toggleWireframe()">WIRE</button>
+        <button class="tog-btn" id="tog-skel" onclick="toggleSkeleton()">SKEL</button>
+        <button class="tog-btn on" id="tog-grid" onclick="toggleGrid()">GRID</button>
+        <button class="tog-btn" id="tog-heatmap" onclick="toggleHeatmap()" style="flex: 1 1 100%; border-color: var(--orange); color: var(--gold); font-weight: bold; margin-top: 4px;">HEATMAP OVERLAY [OFF]</button>
+      </div>
     </div>
   </div>
 
@@ -503,9 +554,12 @@ input[type=range]::-webkit-slider-thumb {
 <div id="right-panel">
 
   <!-- LIGHT RIG -->
-  <div class="panel-box">
-    <div class="panel-label">// LIGHT RIG</div>
-    <div class="rig-grid">
+  <div class="panel-box collapsed" id="light-rig-box">
+    <div class="panel-label collapsible-trigger" onclick="toggleCollapsible('light-rig-box')">
+      <span>// LIGHT RIG</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="collapsible-content rig-grid">
       <button class="rig-btn active" onclick="setRig('combat',this)">COMBAT</button>
       <button class="rig-btn" onclick="setRig('aquila',this)">AQUILA</button>
       <button class="rig-btn" onclick="setRig('field',this)">FIELD</button>
@@ -516,9 +570,12 @@ input[type=range]::-webkit-slider-thumb {
   </div>
 
   <!-- CAMERA PRESET -->
-  <div class="panel-box">
-    <div class="panel-label">// CAMERA PRESET</div>
-    <div class="cam-grid">
+  <div class="panel-box collapsed" id="camera-preset-box">
+    <div class="panel-label collapsible-trigger" onclick="toggleCollapsible('camera-preset-box')">
+      <span>// CAMERA PRESET</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="collapsible-content cam-grid">
       <button class="cam-btn" onclick="setCam('full')">FULL BODY</button>
       <button class="cam-btn" onclick="setCam('bust')">BUST SHOT</button>
       <button class="cam-btn" onclick="setCam('detail')">DETAIL MODE</button>
@@ -547,27 +604,32 @@ input[type=range]::-webkit-slider-thumb {
 </div>
 
 <!-- OSU FACE VIEWER -->
-<div id="osu-face-panel">
-  <div class="osu-face-label">// OSU UNIT — FACE INTERFACE</div>
-  <canvas id="osu-face-canvas"></canvas>
-  <div class="osu-morph-row">
-    <span class="osu-morph-label">EXPRESSION</span>
-    <span class="osu-morph-val" id="osu-expr">NEUTRAL</span>
+<div id="osu-face-panel" class="collapsed">
+  <div class="osu-face-label collapsible-trigger" onclick="toggleCollapsible('osu-face-panel')">
+    <span>// UXI HUD</span>
+    <span class="chevron">▼</span>
   </div>
-  <div class="osu-morph-row">
-    <span class="osu-morph-label">CQL LAYER</span>
-    <span class="osu-morph-val" id="osu-cql">STANDBY</span>
+  <div class="collapsible-content">
+    <canvas id="osu-face-canvas"></canvas>
+    <div class="osu-morph-row">
+      <span class="osu-morph-label">EXPRESSION</span>
+      <span class="osu-morph-val" id="osu-expr">NEUTRAL</span>
+    </div>
+    <div class="osu-morph-row">
+      <span class="osu-morph-label">CQL LAYER</span>
+      <span class="osu-morph-val" id="osu-cql">STANDBY</span>
+    </div>
+    <div id="osu-face-status">DROP OSU FACE GLB TO ACTIVATE</div>
+    <input type="file" id="osu-file-input" accept=".glb,.gltf" style="display:none"
+           onchange="loadOSUFace(event)">
+    <button onclick="document.getElementById('osu-file-input').click()"
+            style="width:100%;margin-top:6px;background:transparent;
+            border:1px solid #9b4dff44;color:var(--purple);
+            font-family:'Share Tech Mono',monospace;font-size:8px;
+            letter-spacing:2px;padding:5px;cursor:pointer;">
+      LOAD OSU FACE GLB
+    </button>
   </div>
-  <div id="osu-face-status">DROP OSU FACE GLB TO ACTIVATE</div>
-  <input type="file" id="osu-file-input" accept=".glb,.gltf" style="display:none"
-         onchange="loadOSUFace(event)">
-  <button onclick="document.getElementById('osu-file-input').click()"
-          style="width:100%;margin-top:6px;background:transparent;
-          border:1px solid #9b4dff44;color:var(--purple);
-          font-family:'Share Tech Mono',monospace;font-size:8px;
-          letter-spacing:2px;padding:5px;cursor:pointer;">
-    LOAD OSU FACE GLB
-  </button>
 </div>
 
 <!-- PLAYER CONTROLLER HUD -->
@@ -637,6 +699,13 @@ input[type=range]::-webkit-slider-thumb {
 </div>
 
 <script>
+function toggleCollapsible(boxId) {
+  const box = document.getElementById(boxId);
+  if (box) {
+    box.classList.toggle('collapsed');
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    GENESIS VERSE — CST CHARACTER VIEWER + PLAYER CONTROLLER
    Babylon.js CDN · Commander Antonio Scott · Simpro Titans Studio

@@ -11,6 +11,7 @@ import ForgePilotMtdModal from './components/ForgePilotMtdModal';
 import JanesGolemGuide from './components/JanesGolemGuide';
 import TrainRouteRadar from './components/TrainRouteRadar';
 import HeroLandingPage from './components/HeroLandingPage';
+import CineCityPanel from './components/CineCityPanel';
 
 const formatUTC = (dateStr: string) => {
   try {
@@ -358,7 +359,7 @@ const loreCards = [
 
 export default function App() {
   // App primary states
-  const [activeTab, setActiveTab] = useState<'reactor' | 'golemGuide' | 'forgeDeploy'>('reactor');
+  const [activeTab, setActiveTab] = useState<'reactor' | 'golemGuide' | 'forgeDeploy' | 'cineCity'>('reactor');
   const [hasEntered, setHasEntered] = useState<boolean>(false);
   const [activeModel, setActiveModel] = useState<MeshModel | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -790,6 +791,17 @@ export default function App() {
           >
             <span className={`w-1.5 h-1.5 rounded-full ${activeTab === 'forgeDeploy' ? 'bg-[#00d4ff] animate-pulse' : 'bg-slate-600'}`} />
             FORGE DEPLOY
+          </button>
+          <button
+            onClick={() => setActiveTab('cineCity')}
+            className={`px-3 py-1 rounded border uppercase tracking-wider text-[8px] font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'cineCity'
+                ? 'bg-[#ffe400]/15 text-[#ffe400] border-[#ffe400]'
+                : 'bg-[#070503] text-slate-400 border-[#2e2418] hover:text-white hover:border-slate-800'
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${activeTab === 'cineCity' ? 'bg-[#ffe400] animate-pulse' : 'bg-slate-600'}`} />
+            CINE CITY
           </button>
         </div>
       </div>
@@ -1292,7 +1304,17 @@ export default function App() {
 
       {activeTab === 'golemGuide' && (
         <main className="flex-1 overflow-hidden relative z-10 flex flex-col">
-          <JanesGolemGuide />
+          <JanesGolemGuide 
+            wallet={wallet}
+            onOpenWallet={() => setIsWalletOpen(true)}
+            onConnectWallet={handleConnectWallet}
+            onDisconnectWallet={handleDisconnectWallet}
+            onTriggerStripeCheckout={handleTriggerStripeCheckout}
+            purchaseHistory={purchaseHistory}
+            onAddPurchase={(item) => {
+              setPurchaseHistory(prev => [item, ...prev]);
+            }}
+          />
         </main>
       )}
 
@@ -1304,6 +1326,12 @@ export default function App() {
             title="Forge Deploy — Character Viewer"
             allow="accelerometer; gyroscope; magnetometer"
           />
+        </main>
+      )}
+
+      {activeTab === 'cineCity' && (
+        <main className="flex-1 overflow-hidden relative z-10 flex flex-col bg-[#020408] p-4">
+          <CineCityPanel />
         </main>
       )}
 
