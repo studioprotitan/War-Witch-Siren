@@ -712,7 +712,8 @@ function toggleCollapsible(boxId) {
 ═══════════════════════════════════════════════════════════════ */
 
 // ── CDN BASE ────────────────────────────────────────────────────
-const CDN_BASE = 'https://github.com/studioprotitan/AbyssumVIP/releases/download/forge_net_deploy_floor_viewer/';
+const CDN_BASE_GLB  = 'https://github.com/studioprotitan/Forge-Avatars/releases/download/v1.0/';
+const CDN_BASE_BABYLON = 'https://github.com/studioprotitan/AbyssumVIP/releases/download/repairbay-v1.0/';
 
 // ── ENGINE STATE ────────────────────────────────────────────────
 let engine, scene, camera;
@@ -742,20 +743,26 @@ let lastAction = '';
 // ── ANIMATION KEY MAP ────────────────────────────────────────────
 // Maps keybindings to animation group name fragments
 // The system finds the best match from loaded animation groups
+const CTRL_ANIM_MAP = {
+  'w': ['fist-walk-a','Walk_Fwd','AS_UE5_MF_Walk_Fwd_0','walk_fwd','walk','Walk'],
+  's': ['fist-walk-back-a','Walk_Back','AS_UE5_MF_Walk_Back_0','walk_back','walkback'],
+  'a': ['fist-walk-left-a','Walk_Left','AS_UE5_MF_Walk_Left_0','strafe_left','walkleft'],
+  'd': ['fist-walk-right-a','Walk_Right','AS_UE5_MF_Walk_Right_0','strafe_right','walkright'],
+  ' ': ['fist-idle-a','AS_UE5_MF_Idle_0','HeroSelect_Idle','Idle_0','idle','Idle'],
+  'f': ['fist-attack-a','Attack_1','AS_UE5_MF_Attack_0','attack'],
+  'g': ['osu-prime-fire-fast-a','osu-prime-fire-medium-a','osu-prime-fire-slow-a','fire'],
+  'e': ['cst-ert-idle-b','fist-idle-b','AS_UE5_MF_Idle_0','idle-b','Idle'],
+  'a_ability': ['osu-unit-idle-a','ability','Ability'],
+  'x': ['osu-loadout-deploy-a','deploy','Deploy'],
+  'idle': ['fist-idle-a','AS_UE5_MF_Idle_0','HeroSelect_Idle','Idle_0','Idle','idle'],
+};
+
 const KEY_ANIM_MAP = {
-  'w':         ['fist-walk-a', 'cst-ert-walk', 'Walk_Fwd', 'walk'],
-  's':         ['fist-walk-back', 'walk-back', 'Walk_Back'],
-  'a':         ['fist-walk-left', 'walk-left', 'Walk_Left', 'strafe-left'],
-  'd':         ['fist-walk-right', 'walk-right', 'Walk_Right', 'strafe-right'],
-  ' ':         ['cst-ert-jump-mid-a', 'jump-mid', 'jump', 'Jump'],
-  'f':         ['fist-attack-a', 'fist-attack', 'attack'],
-  'g_slow':    ['osu-prime-fire-slow', 'fire-slow', 'Fire_Slow'],
-  'g_medium':  ['osu-prime-fire-medium', 'fire-medium', 'Fire_Medium'],
-  'g_fast':    ['osu-prime-fire-fast', 'fire-fast', 'Fire_Fast'],
-  'e':         ['cst-ert-idle-b', 'idle-b', 'Idle_0'],
-  'ability':   ['osu-loadout-deploy', 'osu-unit-idle', 'deploy'],
-  'x':         ['osu-loadout-deploy-a', 'loadout', 'deploy'],
-  'idle':      ['cst-ert-idle-b', 'fist-idle-a', 'Idle_0', 'idle'],
+  ...CTRL_ANIM_MAP,
+  'g_slow': ['osu-prime-fire-slow-a', 'fire', 'AS_UE5_MF_Attack_0'],
+  'g_medium': ['osu-prime-fire-medium-a', 'fire', 'AS_UE5_MF_Attack_0'],
+  'g_fast': ['osu-prime-fire-fast-a', 'fire', 'AS_UE5_MF_Attack_0'],
+  'ability': ['osu-unit-idle-a', 'ability', 'Ability'],
 };
 
 // ── LIGHT RIGS ──────────────────────────────────────────────────
@@ -956,8 +963,9 @@ function handleFile(e) {
 function loadCDN(filename) {
   document.getElementById('drop-zone').classList.add('hidden');
   showLoader('Connecting to CDN...');
-  const url = CDN_BASE + filename;
-  loadGLBUrl(url, filename.replace('.glb', '').replace('.gltf', ''));
+  const base = filename.endsWith('.babylon') ? CDN_BASE_BABYLON : CDN_BASE_GLB;
+  const url = base + filename;
+  loadGLBUrl(url, filename.replace('.glb','').replace('.gltf','').replace('.babylon',''));
 }
 
 // ── GLB LOADER ──────────────────────────────────────────────────
@@ -996,7 +1004,11 @@ function loadGLBUrl(url, name, onDone) {
     document.getElementById('operative-status').classList.add('live');
 
     // Play default idle
-    const defaultAnim = findAnimByKeys(['cst-ert-idle-b', 'idle-b', 'Idle_0', 'AS_UE5_MF_Idle']);
+    const defaultAnim = findAnimByKeys([
+      'fist-idle-a','cst-ert-idle-b','idle-b',
+      'AS_UE5_MF_Idle_0','HeroSelect_Idle','Idle_0',
+      'AS_UE5_MF_Idle','Idle','idle'
+    ]);
     if (defaultAnim) {
       playAnim(defaultAnim);
     } else if (animGroups.length > 0) {
@@ -1107,6 +1119,7 @@ function findAnimByKeys(keys) {
 }
 
 function findAnimForAction(actionKeys) {
+  if (!actionKeys) return null;
   return findAnimByKeys(actionKeys);
 }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Layers, Sparkles, CreditCard, Wallet, ArrowRight, Cpu, Box, RefreshCw, ShieldCheck, Wand2, X, Lock, Flame, Compass, Sliders, Activity, BookOpen, Train, Zap, Shield, Gauge } from 'lucide-react';
+import { Layers, Sparkles, CreditCard, Wallet, ArrowRight, Cpu, Box, RefreshCw, ShieldCheck, Wand2, X, Lock, Flame, Compass, Sliders, Activity, BookOpen, Train, Zap, Shield, Gauge, Grid, Check } from 'lucide-react';
 import { MeshModel, WalletState, PurchaseHistoryItem } from './types';
 import ImageCreationPanel from './components/ImageCreationPanel';
 import ThreeDimensionalViewer from './components/ThreeDimensionalViewer';
@@ -446,6 +446,62 @@ const playLeyScanBeep = () => {
   }
 };
 
+const playSonarPing = (progress: number) => {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+    const time = ctx.currentTime;
+    
+    // Pitch rises dynamically as progress increases
+    // 0% progress -> base frequency 280 Hz
+    // 100% progress -> base frequency 1150 Hz
+    const startFreq = 280 + (progress / 100) * 870; 
+    
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(startFreq, time);
+    // Dynamic sonar echo decay simulation
+    osc.frequency.exponentialRampToValueAtTime(startFreq * 0.8, time + 0.25);
+    
+    // Upper harmonic transient spike for military-grade sonar feel
+    const subOsc = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    subOsc.type = 'sine';
+    subOsc.frequency.setValueAtTime(startFreq * 1.5, time);
+    subGain.gain.setValueAtTime(0.02, time);
+    subGain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+    subOsc.connect(subGain);
+    subGain.connect(ctx.destination);
+    
+    // Primary sound envelope decay
+    gain.gain.setValueAtTime(0.07, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start(time);
+    osc.stop(time + 0.3);
+    
+    subOsc.start(time);
+    subOsc.stop(time + 0.06);
+    
+    setTimeout(() => {
+      if (ctx.state !== 'closed') {
+        ctx.close().catch(() => {});
+      }
+    }, 400);
+  } catch (e) {
+    console.warn('Sonar audio feedback failed:', e);
+  }
+};
+
 export default function App() {
   // App primary states
   const [activeTab, setActiveTab] = useState<'reactor' | 'golemGuide' | 'forgeDeploy' | 'cineCity'>('reactor');
@@ -463,6 +519,42 @@ export default function App() {
     timestamp: string;
   }[]>([]);
   const [lastDetectedFragment, setLastDetectedFragment] = useState<any | null>(null);
+  const [showTacticalGrid, setShowTacticalGrid] = useState(false);
+  const [leyInterferenceFindings, setLeyInterferenceFindings] = useState<{
+    id: string;
+    node: string;
+    sector: string;
+    intensity: number;
+    phaseDrift: string;
+    status: 'ACTIVE' | 'ISOLATED' | 'CRITICAL';
+  }[]>([]);
+
+  const getGridTealColor = () => {
+    if (leyInterferenceFindings.some(f => f.intensity > 90)) {
+      return 'rgb(220, 20, 60)';
+    }
+    if (!isScanningLeyLines) return '#1a9490';
+    // Start Teal RGB (hex #1a9490): 26, 148, 144
+    const rStart = 26;
+    const gStart = 148;
+    const bStart = 144;
+    
+    // Crimson Warning RGB: 220, 20, 60
+    const rEnd = 220;
+    const gEnd = 20;
+    const bEnd = 60;
+    
+    const ratio = leyScanningProgress / 100;
+    const r = Math.round(rStart + (rEnd - rStart) * ratio);
+    const g = Math.round(gStart + (gEnd - gStart) * ratio);
+    const b = Math.round(bStart + (bEnd - bStart) * ratio);
+    
+    return `rgb(${r}, ${g}, ${b})`;
+  };
+
+  const currentTeal = getGridTealColor();
+  const hasCriticalNode = leyInterferenceFindings.some(f => f.intensity > 90);
+  const criticalCount = leyInterferenceFindings.filter(f => f.status === 'CRITICAL').length;
 
   const handleTriggerLeyScan = () => {
     if (isScanningLeyLines) return;
@@ -476,6 +568,7 @@ export default function App() {
       if (currentProgress >= 100) {
         currentProgress = 100;
         clearInterval(interval);
+        setLeyScanningProgress(100);
         
         // Pick a random fragment from LEY_LINE_FRAGMENTS_POOL
         const randomIndex = Math.floor(Math.random() * LEY_LINE_FRAGMENTS_POOL.length);
@@ -490,12 +583,33 @@ export default function App() {
           timestamp: new Date().toISOString()
         };
         
+        // Generate detailed interference findings representing specific layout nodes
+        const sectors = ['JANE DISTRICT', 'CORGEMONT STATION', 'SLAG BASIN', 'LEYLINE GRID', 'SOUTHERN RAIL'];
+        const nodes = ['LEY-A1 (NW)', 'LEY-A2 (NE)', 'CORE HYPER-CELL', 'LEY-B1 (SW)', 'LEY-B2 (SE)'];
+        
+        const generatedFindings = nodes.map((nodeName, idx) => {
+          const intensity = Math.floor(Math.random() * 55) + 40; // 40 - 95%
+          const driftVal = Math.random() * 2.8 - 1.4;
+          const drift = driftVal.toFixed(2);
+          const statusVal = intensity > 80 ? 'CRITICAL' : 'ACTIVE';
+          return {
+            id: `LF-0${idx + 1}-${Math.floor(100 + Math.random() * 900)}`,
+            node: nodeName,
+            sector: sectors[idx % sectors.length],
+            intensity,
+            phaseDrift: `${driftVal > 0 ? '+' : ''}${drift}s`,
+            status: statusVal as 'ACTIVE' | 'ISOLATED' | 'CRITICAL'
+          };
+        });
+        
+        setLeyInterferenceFindings(generatedFindings);
         setDetectedLeyFragments(prev => [newFragment, ...prev]);
         setLastDetectedFragment(newFragment);
         setIsScanningLeyLines(false);
         playLeyScanBeep();
       } else {
         setLeyScanningProgress(currentProgress);
+        playSonarPing(currentProgress);
         // Dynamically update scanning status based on progress
         if (currentProgress < 20) {
           setLeyScanningStep('EMITTING RESONANCE PULSES...');
@@ -1140,6 +1254,27 @@ export default function App() {
 
           {selectedImage ? (
             <div className="flex-1 flex flex-col gap-3 overflow-hidden min-h-0">
+              {/* Image Control Toolbar */}
+              <div className="flex justify-between items-center bg-[#0d0b08] border border-[#211a12] px-3 py-1.5 rounded-lg text-[7.5px] font-mono shrink-0">
+                <span className="text-[#a89880] uppercase tracking-wider flex items-center gap-1.5 font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#1a9490] animate-pulse" />
+                  ANALYSIS SCREEN V_2.0
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowTacticalGrid(prev => !prev)}
+                    className={`px-2 py-1 rounded border text-[7px] font-mono font-black uppercase tracking-widest transition flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                      showTacticalGrid
+                        ? 'bg-[#1a9490]/25 text-[#00f0ff] border-[#1a9490]/70 shadow-[0_0_8px_rgba(26,148,144,0.3)] font-black'
+                        : 'bg-[#030201] text-slate-500 border-[#2e2418] hover:text-slate-300 hover:border-slate-800'
+                    }`}
+                  >
+                    <Grid className="w-3 h-3 text-[#1a9490]" />
+                    <span>TACTICAL GRID: {showTacticalGrid ? 'ACTIVE' : 'OFFLINE'}</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Image Preview Container */}
               <div className="flex-1 bg-[#040302] rounded-lg overflow-hidden border border-[#211a12] flex items-center justify-center relative min-h-0">
                 <img src={selectedImage} referrerPolicy="no-referrer" id="tripo-reference-image" alt="Decrypted Core signature" className="w-full h-full object-contain p-2.5 drop-shadow-[0_0_12px_rgba(196,106,26,0.15)] z-10" />
@@ -1204,6 +1339,312 @@ export default function App() {
                     <span className="text-[10px] font-mono text-[#c46a1a] tracking-[0.3em] font-extrabold drop-shadow-[0_0_5px_rgba(196,106,26,0.6)] animate-pulse uppercase">
                       ACTIVE LEY LINE SCAN
                     </span>
+                  </div>
+                )}
+
+                {/* Tactical grid overlay */}
+                {showTacticalGrid && (
+                  <div className="absolute inset-0 z-20 pointer-events-none select-none overflow-hidden rounded-lg">
+                    {/* SVG Grid Overlay */}
+                    <svg className={`absolute inset-0 w-full h-full ${hasCriticalNode ? 'animate-grid-critical' : ''}`} viewBox="0 0 100 100" preserveAspectRatio="none">
+                      {/* Outer Tactical Corner Bracket Guides */}
+                      <path d="M 4 8 H 8 V 4" fill="none" stroke={currentTeal} strokeWidth="0.5" className="opacity-80" style={{ transition: 'stroke 0.3s ease' }} />
+                      <path d="M 96 8 H 92 V 4" fill="none" stroke={currentTeal} strokeWidth="0.5" className="opacity-80" style={{ transition: 'stroke 0.3s ease' }} />
+                      <path d="M 4 92 H 8 V 96" fill="none" stroke={currentTeal} strokeWidth="0.5" className="opacity-80" style={{ transition: 'stroke 0.3s ease' }} />
+                      <path d="M 96 92 H 92 V 96" fill="none" stroke={currentTeal} strokeWidth="0.5" className="opacity-80" style={{ transition: 'stroke 0.3s ease' }} />
+
+                      {/* Grid Lines with Signal Flicker in Southern Rail Division when scanner is active */}
+                      <g className={hasCriticalNode ? 'animate-grid-critical' : (isScanningLeyLines ? 'animate-grid-flicker' : '')}>
+                        {/* Grid Lines - Horizontal */}
+                        <line x1="10" y1="30" x2="90" y2="30" stroke={currentTeal} strokeWidth="0.15" strokeOpacity="0.45" style={{ transition: 'stroke 0.3s ease' }} />
+                        <line x1="10" y1="50" x2="90" y2="50" stroke="#c46a1a" strokeWidth="0.25" strokeDasharray="1 1" strokeOpacity="0.75" />
+                        <line x1="10" y1="70" x2="90" y2="70" stroke={currentTeal} strokeWidth="0.15" strokeOpacity="0.45" style={{ transition: 'stroke 0.3s ease' }} />
+
+                        {/* Grid Lines - Vertical */}
+                        <line x1="25" y1="10" x2="25" y2="90" stroke={currentTeal} strokeWidth="0.15" strokeOpacity="0.45" style={{ transition: 'stroke 0.3s ease' }} />
+                        <line x1="50" y1="10" x2="50" y2="90" stroke="#c46a1a" strokeWidth="0.25" strokeDasharray="1 1" strokeOpacity="0.75" />
+                        <line x1="75" y1="10" x2="75" y2="90" stroke={currentTeal} strokeWidth="0.15" strokeOpacity="0.45" style={{ transition: 'stroke 0.3s ease' }} />
+                      </g>
+
+                      {/* Dynamic Scan sweep line inside the grid */}
+                      <line x1="10" y1="1" x2="90" y2="1" stroke="#00f0ff" strokeWidth="0.35" className="animate-ley-scanner-sweep" strokeOpacity="0.75" />
+
+                      {/* Projected Ley Line Intersections & Target nodes */}
+                      {[
+                        { cx: 25, cy: 30 },
+                        { cx: 75, cy: 30 },
+                        { cx: 50, cy: 50 },
+                        { cx: 25, cy: 70 },
+                        { cx: 75, cy: 70 },
+                      ].map((n, idx) => (
+                        <g key={idx} className="origin-center">
+                          {/* Pulsing Intersect rings */}
+                          <circle 
+                            cx={n.cx} 
+                            cy={n.cy} 
+                            r="3.5" 
+                            fill="none" 
+                            stroke={n.cx === 50 ? '#c46a1a' : currentTeal} 
+                            strokeWidth="0.25" 
+                            className="animate-intersection-pulse"
+                            style={{ transition: 'stroke 0.3s ease' }}
+                          />
+                          <circle 
+                            cx={n.cx} 
+                            cy={n.cy} 
+                            r="1.2" 
+                            fill={n.cx === 50 ? '#ff8400' : (isScanningLeyLines ? currentTeal : '#00fffa')} 
+                            className="animate-pulse"
+                            style={{ transition: 'fill 0.3s ease' }}
+                          />
+                          
+                          {/* Target box crosshair lines surrounding nodes */}
+                          <rect 
+                            x={n.cx - 2} 
+                            y={n.cy - 2} 
+                            width="4" 
+                            height="4" 
+                            fill="none" 
+                            stroke={n.cx === 50 ? '#c46a1a' : currentTeal} 
+                            strokeWidth="0.1" 
+                            strokeDasharray="0.5 0.5"
+                            className="opacity-60"
+                            style={{ transition: 'stroke 0.3s ease' }}
+                          />
+                        </g>
+                      ))}
+                    </svg>
+
+                    {/* Labels with HTML text overlays for perfect rendering and accessibility */}
+                    <div className="absolute inset-0 text-white font-mono text-[6.5px] pointer-events-none">
+                      {([
+                        { name: 'LEY-A1 (NW)', style: { left: '26%', top: '27.5%' }, color: '' },
+                        { name: 'LEY-A2 (NE)', style: { left: '76%', top: '27.5%' }, color: '' },
+                        { name: 'CORE HYPER-CELL', style: { left: '51%', top: '47.5%', color: '#c46a1a' }, color: '#c46a1a' },
+                        { name: 'LEY-B1 (SW)', style: { left: '26%', top: '67.5%' }, color: '' },
+                        { name: 'LEY-B2 (SE)', style: { left: '76%', top: '67.5%' }, color: '' },
+                      ] as { name: string; style: React.CSSProperties; color?: string }[]).map((l, idx) => (
+                        <div 
+                          key={idx} 
+                          className="absolute bg-[#030201]/95 px-1 py-0.2 border border-[#211a12] rounded flex items-center gap-1 opacity-95 transition-all duration-300 transform -translate-y-1/2 scale-75 md:scale-100"
+                          style={l.style}
+                        >
+                          <span 
+                            className={`w-1 h-1 rounded-full ${l.name.includes('CORE') ? 'bg-amber-500' : ''} animate-pulse`} 
+                            style={l.name.includes('CORE') ? {} : { backgroundColor: currentTeal, transition: 'background-color 0.3s ease' }}
+                          />
+                          <span className="font-bold whitespace-nowrap text-white" style={l.color ? { color: l.color } : {}}>{l.name}</span>
+                        </div>
+                      ))}
+
+                      {/* Grid Coordinates (Legend labels around border edges) */}
+                      <div className="absolute top-1 left-[25%] -translate-x-1/2 text-slate-500 px-1 py-0.2 bg-black/60 rounded">X-25</div>
+                      <div className="absolute top-1 left-[50%] -translate-x-1/2 text-[#c46a1a] px-1 py-0.2 bg-black/60 rounded font-bold">X-50 (CTR)</div>
+                      <div className="absolute top-1 left-[75%] -translate-x-1/2 text-slate-500 px-1 py-0.2 bg-black/60 rounded">X-75</div>
+
+                      <div className="absolute left-1 top-[30%] -translate-y-1/2 text-slate-500 px-1 py-0.2 bg-black/60 rounded">Y-30</div>
+                      <div className="absolute left-1 top-[50%] -translate-y-1/2 text-[#c46a1a] px-1 py-0.2 bg-black/60 rounded font-bold">Y-50</div>
+                      <div className="absolute left-1 top-[70%] -translate-y-1/2 text-slate-500 px-1 py-0.2 bg-black/60 rounded">Y-70</div>
+
+                      {/* Southern Rail Division Signal Status Legend */}
+                      <div className="absolute bottom-1 right-2 bg-[#030201]/95 px-1.5 py-0.5 border border-[#211a12] rounded flex items-center gap-1.5 opacity-85 backdrop-blur shadow-[0_0_8px_rgba(0,0,0,0.8)]">
+                        <span 
+                          className={`w-1.5 h-1.5 rounded-full ${isScanningLeyLines ? 'animate-ping' : ''}`} 
+                          style={{ backgroundColor: isScanningLeyLines ? 'rgb(220, 20, 60)' : currentTeal, transition: 'background-color 0.3s ease' }}
+                        />
+                        <span className="text-[5.5px] text-[#a89880] tracking-wider uppercase font-extrabold select-none">
+                          {isScanningLeyLines ? 'SOUTHERN RAIL INTERFERENCE: MODIFIED' : 'SOUTHERN RAIL SIGNAL: ACTIVE'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Scan Summary Panel */}
+                    {leyScanningProgress === 100 && (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="absolute inset-2 md:inset-4 z-30 pointer-events-auto bg-[#0a0705]/98 border border-[#c46a1a] rounded-lg p-3 flex flex-col shadow-[0_0_25px_rgba(196,106,26,0.4)]"
+                      >
+                        {/* Panel Header */}
+                        <div className="flex items-center justify-between border-b border-[#211a12] pb-1.5 mb-2 shrink-0">
+                          <div className="flex items-center gap-1.5 font-mono">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#1a9490] animate-pulse" />
+                            <span className="text-[7.5px] font-black text-[#1a9490] tracking-wider uppercase">
+                              Leyline Diagnostic Report v1.1
+                            </span>
+                            <span className="text-[6px] text-slate-500 hidden md:inline ml-1 font-normal">
+                              REF: LYS-94X-COIL
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => {
+                                const updated = leyInterferenceFindings.map((f, idx) => ({
+                                  ...f,
+                                  intensity: idx < 4 ? 94 : 35, // 4 critical nodes
+                                  status: idx < 4 ? 'CRITICAL' as const : 'ACTIVE' as const
+                                }));
+                                setLeyInterferenceFindings(updated);
+                                playLeyScanBeep();
+                              }}
+                              className="text-[6px] font-mono text-red-500 hover:text-red-400 font-bold border border-red-500/40 hover:border-red-500 px-1.5 py-0.5 rounded transition-colors bg-black/40 cursor-pointer"
+                              title="Force 4 critical nodes to trigger warning"
+                            >
+                              SIMULATE OVERLOAD
+                            </button>
+                            <button 
+                              onClick={() => {
+                                const updated = leyInterferenceFindings.map(f => ({
+                                  ...f,
+                                  intensity: Math.floor(Math.random() * 5) + 3,
+                                  status: 'ISOLATED' as const
+                                }));
+                                setLeyInterferenceFindings(updated);
+                                playLeyScanBeep();
+                              }}
+                              className="text-[6px] font-mono text-[#1a9490] hover:text-[#00fffa] font-bold border border-[#1a9490]/40 hover:border-[#1a9490]/80 px-1.5 py-0.5 rounded transition-colors bg-black/40 cursor-pointer"
+                              title="Suppress all detected interference nodes"
+                            >
+                              INITIALIZE COIL PURGE
+                            </button>
+                            <button 
+                              onClick={() => setLeyScanningProgress(0)}
+                              className="text-[8px] text-[#ff8400] hover:text-red-500 font-extrabold px-1.5 py-0.5 bg-black/40 hover:bg-neutral-900 border border-[#211a12] rounded transition-colors cursor-pointer"
+                              title="Dismiss summary panel"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Warning Critical Stability Banner */}
+                        {criticalCount > 3 && (
+                          <div className="mb-2 bg-red-950/65 border border-red-500/80 rounded p-2 flex items-center justify-between gap-2 animate-pulse shrink-0 shadow-[0_0_12px_rgba(239,68,68,0.2)]">
+                            <div className="flex items-center gap-2">
+                              <Flame className="w-4 h-4 text-red-500 shrink-0" />
+                              <div className="font-mono text-left">
+                                <span className="text-[7.5px] font-black text-red-400 tracking-wider block">
+                                  WARNING: CRITICAL STABILITY DETECTED
+                                </span>
+                                <span className="text-[5.5px] text-red-350 block leading-tight">
+                                  Severe electro-magnetic feedback across {criticalCount} major grid alignments. Disruption imminent.
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-[6.5px] font-extrabold text-white bg-red-600 px-1.5 py-0.5 rounded border border-red-400 font-mono select-none">
+                              DANGER LEVEL: HIGH ({criticalCount} NODES)
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Summary Stats Grid */}
+                        <div className="grid grid-cols-3 gap-1.5 mb-2 p-1.5 bg-[#0e0a08]/85 border border-[#211a12] rounded font-mono text-[7px] shrink-0">
+                          <div>
+                            <span className="text-slate-500 uppercase block text-[5px] tracking-wider leading-tight">Total Anomalies</span>
+                            <span className="text-white font-bold block">
+                              {leyInterferenceFindings.length} Vectors Detected
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 uppercase block text-[5px] tracking-wider leading-tight">Avg Signal Drift</span>
+                            <span className="text-amber-500 font-bold block">
+                              {(leyInterferenceFindings.reduce((acc, f) => acc + parseFloat(f.phaseDrift), 0) / (leyInterferenceFindings.length || 1)).toFixed(2)}s Amplitude
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 uppercase block text-[5px] tracking-wider leading-tight">Threat Assessment</span>
+                            <span className="text-red-500 font-extrabold animate-pulse block">
+                              {leyInterferenceFindings.some(f => f.status === 'CRITICAL') ? 'CRITICAL INSTABILITY' : 'SUPPRESSED'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Interactive Data Table */}
+                        <div className="flex-1 overflow-y-auto overflow-x-auto min-h-0 custom-scrollbar pointer-events-auto select-none rounded border border-[#211a12]/50">
+                          <table className="w-full text-left font-mono text-[6px] md:text-[6.5px] border-collapse">
+                            <thead>
+                              <tr className="border-b border-[#211a12] text-[#a89880]/60 uppercase tracking-wider bg-[#060403] sticky top-0 z-10">
+                                <th className="p-1 font-bold">NODE ID</th>
+                                <th className="p-1 font-bold">LOCATION & SECTOR</th>
+                                <th className="p-1 font-bold text-center">INTENSITY</th>
+                                <th className="p-1 font-bold">DRIFT</th>
+                                <th className="p-1 font-bold col-span-1">STATUS</th>
+                                <th className="p-1 font-bold text-right">MITIGATION</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#211a12]/40 bg-zinc-950/60">
+                              {leyInterferenceFindings.map((finding) => (
+                                <tr 
+                                  key={finding.id} 
+                                  className="group hover:bg-[#c46a1a]/5 transition-colors"
+                                >
+                                  <td className="p-1 font-bold text-white group-hover:text-[#00fffa] transition-colors">{finding.id}</td>
+                                  <td className="p-1 text-slate-300">
+                                    <div className="font-extrabold text-[6.5px] text-zinc-100">{finding.node}</div>
+                                    <div className="text-[5.5px] text-zinc-500 uppercase">{finding.sector}</div>
+                                  </td>
+                                  <td className="p-1 text-center font-bold">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <div className="w-12 bg-[#090706] border border-[#211a12] h-1 rounded-full overflow-hidden inline-block align-middle">
+                                        <div 
+                                          className={`h-full rounded-full ${
+                                            finding.status === 'CRITICAL' ? 'bg-red-500 shadow-[0_0_4px_#ef4444]' : 
+                                            finding.status === 'ISOLATED' ? 'bg-emerald-500' : 'bg-amber-500 shadow-[0_0_4px_#f59e0b]'
+                                          }`} 
+                                          style={{ width: `${finding.intensity}%`, transition: 'width 0.5s ease' }}
+                                        />
+                                      </div>
+                                      <span className={`${
+                                        finding.status === 'CRITICAL' ? 'text-red-400 font-extrabold' : 
+                                        finding.status === 'ISOLATED' ? 'text-emerald-400' : 'text-amber-400 font-bold'
+                                      }`}>
+                                        {finding.intensity}%
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="p-1 text-slate-400 font-bold">{finding.phaseDrift}</td>
+                                  <td className="p-1">
+                                    <span className={`px-1 py-0.2 rounded text-[5px] font-extrabold inline-block text-center min-w-[42px] uppercase ${
+                                      finding.status === 'CRITICAL' ? 'bg-red-950/80 text-red-400 border border-red-850' : 
+                                      finding.status === 'ISOLATED' ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-850' : 
+                                      'bg-amber-950/80 text-amber-400 border border-amber-850'
+                                    }`}>
+                                      {finding.status}
+                                    </span>
+                                  </td>
+                                  <td className="p-1 text-right">
+                                    {finding.status !== 'ISOLATED' ? (
+                                      <button
+                                        onClick={() => {
+                                          const updated = leyInterferenceFindings.map(f => 
+                                            f.id === finding.id ? { ...f, status: 'ISOLATED' as const, intensity: 6 } : f
+                                          );
+                                          setLeyInterferenceFindings(updated);
+                                          playLeyScanBeep();
+                                        }}
+                                        className="bg-[#1a9490]/15 hover:bg-[#1a9490]/90 text-[#00fffa] hover:text-black border border-[#1a9490]/40 hover:border-[#00fffa] px-1.5 py-0.2 text-[5.5px] font-bold rounded transition-all cursor-pointer"
+                                      >
+                                        ISOLATE
+                                      </button>
+                                    ) : (
+                                      <span className="text-[#00fffa] font-extrabold italic text-[5.5px] inline-flex items-center gap-0.5 select-none leading-none">
+                                        <Check className="w-1.5 h-1.5" /> SECURE
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Footer details */}
+                        <div className="mt-2 pt-1.5 border-t border-[#211a12] flex items-center justify-between text-[5.5px] font-mono text-zinc-500 shrink-0">
+                          <span>SYSTEM METRIC: SOUTHERN_RAIL_COEFFICIENT=1.5x</span>
+                          <span className="animate-pulse text-[#1a9490]">SCAN STATUS COMPLETE: ACTIVE HARMONIZATION OK</span>
+                        </div>
+                      </motion.div>
+                    )}
                   </div>
                 )}
 
@@ -1879,6 +2320,55 @@ export default function App() {
         .animate-ley-scanner-sweep {
           position: absolute;
           animation: leyScannerSweep 3s ease-in-out infinite;
+        }
+        @keyframes intersectionPulse {
+          0% {
+            r: 2px;
+            opacity: 0.3;
+          }
+          50% {
+            r: 6px;
+            opacity: 0.95;
+            stroke-width: 0.4px;
+          }
+          100% {
+            r: 2px;
+            opacity: 0.3;
+          }
+        }
+        .animate-intersection-pulse {
+          animation: intersectionPulse 2.1s ease-in-out infinite;
+          transform-origin: center;
+        }
+        @keyframes gridFlicker {
+          0%, 100% { opacity: 1; }
+          23% { opacity: 1; }
+          24% { opacity: 0.3; }
+          26% { opacity: 0.8; }
+          27% { opacity: 0.15; }
+          28% { opacity: 0.95; }
+          50% { opacity: 0.95; }
+          51% { opacity: 0.4; }
+          53% { opacity: 0.9; }
+          72% { opacity: 0.9; }
+          73% { opacity: 0.2; }
+          75% { opacity: 1; }
+        }
+        .animate-grid-flicker {
+          animation: gridFlicker 1.5s infinite;
+        }
+        @keyframes gridCriticalStrobe {
+          0%, 100% {
+            opacity: 1;
+            filter: drop-shadow(0px 0px 3px rgba(220, 20, 60, 0.95));
+          }
+          50% {
+            opacity: 0.15;
+            filter: drop-shadow(0px 0px 1px rgba(220, 20, 60, 0.15));
+          }
+        }
+        .animate-grid-critical {
+          animation: gridCriticalStrobe 0.15s infinite;
         }
       `}</style>
 
