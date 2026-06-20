@@ -320,7 +320,7 @@ input[type=range]::-webkit-slider-thumb {
 
 /* ── PLAYER CONTROLLER HUD ── */
 #player-hud {
-  position: fixed; bottom: 16px; left: 12px;
+  position: fixed; top: 54px; left: 204px;
   z-index: 100;
   display: flex; flex-direction: column; gap: 6px;
 }
@@ -655,7 +655,7 @@ input[type=range]::-webkit-slider-thumb {
     <div class="key-row"><span class="key-badge">F</span><span class="key-desc combat">FIST ATTACK</span></div>
     <div class="key-row"><span class="key-badge">G</span><span class="key-desc fire">FIRE (CYCLE S/M/F)</span></div>
     <div class="key-row"><span class="key-badge">E</span><span class="key-desc">INTERACT / IDLE B</span></div>
-    <div class="key-row"><span class="key-badge">A</span><span class="key-desc osu">OSU ABILITY</span></div>
+    <div class="key-row"><span class="key-badge">Q</span><span class="key-desc osu">OSU ABILITY</span></div>
     <div class="key-row"><span class="key-badge">X</span><span class="key-desc">LOADOUT DEPLOY</span></div>
     <div class="key-row"><span class="key-badge">TAB</span><span class="key-desc">TOGGLE CONTROLLER</span></div>
   </div>
@@ -1522,6 +1522,7 @@ function updateTimeline() {
   document.getElementById('tl-frames').innerText = `${Math.round(frame)} / ${Math.round(range)}`;
 }
 
+// ── TIMELINE RESET ──────────────────────────────────────────────
 function resetTimeline() {
   document.getElementById('tl-fill').style.width = '0%';
   document.getElementById('tl-thumb').style.left = '0%';

@@ -503,6 +503,57 @@ const playSonarPing = (progress: number) => {
   }
 };
 
+const playCriticalStabilityPulse = () => {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+    const time = ctx.currentTime;
+    
+    // Low frequency alarm pulse: combines 60Hz and 120Hz for deep critical resonance
+    const oscSub = ctx.createOscillator();
+    oscSub.type = 'sine';
+    oscSub.frequency.setValueAtTime(60, time);
+    
+    const oscGrowl = ctx.createOscillator();
+    oscGrowl.type = 'triangle';
+    oscGrowl.frequency.setValueAtTime(120, time);
+    
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(140, time);
+    filter.Q.setValueAtTime(1.5, time);
+    
+    const gainNode = ctx.createGain();
+    gainNode.gain.setValueAtTime(0, time);
+    gainNode.gain.linearRampToValueAtTime(0.35, time + 0.05);
+    gainNode.gain.setValueAtTime(0.35, time + 0.25);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.55);
+    
+    oscSub.connect(filter);
+    oscGrowl.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    oscSub.start(time);
+    oscGrowl.start(time);
+    
+    oscSub.stop(time + 0.6);
+    oscGrowl.stop(time + 0.6);
+    
+    setTimeout(() => {
+      if (ctx.state !== 'closed') {
+        ctx.close().catch(() => {});
+      }
+    }, 700);
+  } catch (err) {
+    console.warn('Warning audio pulse failed:', err);
+  }
+};
+
 export default function App() {
   // App primary states
   const [activeTab, setActiveTab] = useState<'reactor' | 'golemGuide' | 'forgeDeploy' | 'cineCity'>('reactor');
@@ -530,6 +581,29 @@ export default function App() {
     status: 'ACTIVE' | 'ISOLATED' | 'CRITICAL';
   }[]>([]);
   const [scanHistory, setScanHistory] = useState<number[]>([45, 52, 49, 61, 55]);
+
+  // Trigger warning audio pulse when Critical Stability banner is visible
+  useEffect(() => {
+    let warningPulseInterval: NodeJS.Timeout | null = null;
+    const isBannerVisible = leyScanningProgress === 100 && (leyInterferenceFindings.filter(f => f.status === 'CRITICAL').length > 3);
+    
+    if (isBannerVisible) {
+      // Play first pulse immediately
+      playCriticalStabilityPulse();
+      
+      // Setup loop
+      warningPulseInterval = setInterval(() => {
+        playCriticalStabilityPulse();
+      }, 1500);
+    }
+    
+    return () => {
+      if (warningPulseInterval) {
+        clearInterval(warningPulseInterval);
+      }
+    };
+  }, [leyScanningProgress, leyInterferenceFindings]);
+
 
   const getGridTealColor = () => {
     if (leyInterferenceFindings.some(f => f.intensity > 90)) {
