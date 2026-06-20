@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import * as d3 from 'd3';
 import { Layers, Sparkles, CreditCard, Wallet, ArrowRight, Cpu, Box, RefreshCw, ShieldCheck, Wand2, X, Lock, Flame, Compass, Sliders, Activity, BookOpen, Train, Zap, Shield, Gauge, Grid, Check } from 'lucide-react';
 import { MeshModel, WalletState, PurchaseHistoryItem } from './types';
 import ImageCreationPanel from './components/ImageCreationPanel';
@@ -528,6 +529,7 @@ export default function App() {
     phaseDrift: string;
     status: 'ACTIVE' | 'ISOLATED' | 'CRITICAL';
   }[]>([]);
+  const [scanHistory, setScanHistory] = useState<number[]>([45, 52, 49, 61, 55]);
 
   const getGridTealColor = () => {
     if (leyInterferenceFindings.some(f => f.intensity > 90)) {
@@ -603,6 +605,12 @@ export default function App() {
         });
         
         setLeyInterferenceFindings(generatedFindings);
+        const avg = Math.round(generatedFindings.reduce((sum, f) => sum + f.intensity, 0) / generatedFindings.length);
+        setScanHistory(prev => {
+          const next = [...prev, avg];
+          if (next.length > 5) return next.slice(next.length - 5);
+          return next;
+        });
         setDetectedLeyFragments(prev => [newFragment, ...prev]);
         setLastDetectedFragment(newFragment);
         setIsScanningLeyLines(false);
@@ -1485,6 +1493,12 @@ export default function App() {
                                   status: idx < 4 ? 'CRITICAL' as const : 'ACTIVE' as const
                                 }));
                                 setLeyInterferenceFindings(updated);
+                                const avgOverload = Math.round(updated.reduce((sum, x) => sum + x.intensity, 0) / updated.length);
+                                setScanHistory(prev => {
+                                  const next = [...prev];
+                                  if (next.length > 0) next[next.length - 1] = avgOverload;
+                                  return next;
+                                });
                                 playLeyScanBeep();
                               }}
                               className="text-[6px] font-mono text-red-500 hover:text-red-400 font-bold border border-red-500/40 hover:border-red-500 px-1.5 py-0.5 rounded transition-colors bg-black/40 cursor-pointer"
@@ -1500,6 +1514,12 @@ export default function App() {
                                   status: 'ISOLATED' as const
                                 }));
                                 setLeyInterferenceFindings(updated);
+                                const avgPurged = Math.round(updated.reduce((sum, x) => sum + x.intensity, 0) / updated.length);
+                                setScanHistory(prev => {
+                                  const next = [...prev];
+                                  if (next.length > 0) next[next.length - 1] = avgPurged;
+                                  return next;
+                                });
                                 playLeyScanBeep();
                               }}
                               className="text-[6px] font-mono text-[#1a9490] hover:text-[#00fffa] font-bold border border-[#1a9490]/40 hover:border-[#1a9490]/80 px-1.5 py-0.5 rounded transition-colors bg-black/40 cursor-pointer"
@@ -1537,27 +1557,185 @@ export default function App() {
                           </div>
                         )}
 
-                        {/* Summary Stats Grid */}
-                        <div className="grid grid-cols-3 gap-1.5 mb-2 p-1.5 bg-[#0e0a08]/85 border border-[#211a12] rounded font-mono text-[7px] shrink-0">
-                          <div>
-                            <span className="text-slate-500 uppercase block text-[5px] tracking-wider leading-tight">Total Anomalies</span>
-                            <span className="text-white font-bold block">
-                              {leyInterferenceFindings.length} Vectors Detected
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-slate-500 uppercase block text-[5px] tracking-wider leading-tight">Avg Signal Drift</span>
-                            <span className="text-amber-500 font-bold block">
-                              {(leyInterferenceFindings.reduce((acc, f) => acc + parseFloat(f.phaseDrift), 0) / (leyInterferenceFindings.length || 1)).toFixed(2)}s Amplitude
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-slate-500 uppercase block text-[5px] tracking-wider leading-tight">Threat Assessment</span>
-                            <span className="text-red-500 font-extrabold animate-pulse block">
-                              {leyInterferenceFindings.some(f => f.status === 'CRITICAL') ? 'CRITICAL INSTABILITY' : 'SUPPRESSED'}
-                            </span>
-                          </div>
-                        </div>
+                        {/* Summary Stats Grid & Telemetry Chart */}
+                        {(() => {
+                          const d3Width = 240;
+                          const d3Height = 45;
+                          const d3Padding = { top: 6, right: 12, bottom: 12, left: 24 };
+
+                          const d3XScale = d3.scaleLinear()
+                            .domain([0, 4])
+                            .range([d3Padding.left, d3Width - d3Padding.right]);
+
+                          const d3YScale = d3.scaleLinear()
+                            .domain([0, 100])
+                            .range([d3Height - d3Padding.bottom, d3Padding.top]);
+
+                          const d3LineGen = d3.line<number>()
+                            .x((_, idx) => d3XScale(idx))
+                            .y((val) => d3YScale(val))
+                            .curve(d3.curveMonotoneX);
+
+                          const d3AreaGen = d3.area<number>()
+                            .x((_, idx) => d3XScale(idx))
+                            .y0(d3Height - d3Padding.bottom)
+                            .y1((val) => d3YScale(val))
+                            .curve(d3.curveMonotoneX);
+
+                          const d3LinePath = d3LineGen(scanHistory) || '';
+                          const d3AreaPath = d3AreaGen(scanHistory) || '';
+
+                          const isLastScanCritical = scanHistory[scanHistory.length - 1] > 75;
+                          const themeColor = isLastScanCritical ? '#ef4444' : '#1a9490';
+                          const areaGradientId = isLastScanCritical ? 'd3AreaGlowCritical' : 'd3AreaGlow';
+
+                          return (
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2 shrink-0">
+                              {/* D3 Scan History Trend Line Chart */}
+                              <div className="md:col-span-2 bg-[#090706] border border-[#211a12] rounded p-1.5 flex flex-col font-mono relative">
+                                <div className="flex items-center justify-between text-[6px] text-[#8e806a] uppercase tracking-widest font-bold border-b border-[#211a12] pb-1 mb-1 select-none">
+                                  <span>⬥ Telemetry: Leyline Intensity Trend</span>
+                                  <span className="text-[5px] text-[#00fffa] font-extrabold animate-pulse">Stability Graph (t-4 → NOW)</span>
+                                </div>
+                                <div className="flex-1 min-h-[46px] w-[240px] max-w-full mx-auto flex items-center justify-center">
+                                  <svg className="w-full h-full" viewBox={`0 0 ${d3Width} ${d3Height}`} preserveAspectRatio="xMidYMid meet">
+                                    <defs>
+                                      <linearGradient id="d3AreaGlow" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#1a9490" stopOpacity="0.4" />
+                                        <stop offset="100%" stopColor="#1a9490" stopOpacity="0.0" />
+                                      </linearGradient>
+                                      <linearGradient id="d3AreaGlowCritical" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#ef4444" stopOpacity="0.4" />
+                                        <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
+                                      </linearGradient>
+                                    </defs>
+                                    
+                                    {/* D3 horizontal levels */}
+                                    {[0, 50, 100].map((level) => {
+                                      const yVal = d3YScale(level);
+                                      return (
+                                        <g key={level}>
+                                          <line
+                                            x1={d3Padding.left}
+                                            y1={yVal}
+                                            x2={d3Width - d3Padding.right}
+                                            y2={yVal}
+                                            stroke="#1e1812"
+                                            strokeWidth="0.5"
+                                            strokeDasharray="1 2"
+                                          />
+                                          <text
+                                            x={d3Padding.left - 4}
+                                            y={yVal + 1.5}
+                                            textAnchor="end"
+                                            fill="#8e806a"
+                                            className="text-[4.5px] font-mono leading-none select-none opacity-85"
+                                          >
+                                            {level}%
+                                          </text>
+                                        </g>
+                                      );
+                                    })}
+
+                                    {/* D3 horizontal time points */}
+                                    {scanHistory.map((_, idx) => {
+                                      const xVal = d3XScale(idx);
+                                      return (
+                                        <g key={idx}>
+                                          <line
+                                            x1={xVal}
+                                            y1={d3Padding.top}
+                                            x2={xVal}
+                                            y2={d3Height - d3Padding.bottom}
+                                            stroke="#1e1812"
+                                            strokeWidth="0.5"
+                                            strokeDasharray="1 2"
+                                          />
+                                          <text
+                                            x={xVal}
+                                            y={d3Height - d3Padding.bottom + 7}
+                                            textAnchor="middle"
+                                            fill="#8e806a"
+                                            className="text-[4px] font-mono leading-none select-none"
+                                          >
+                                            {idx === 4 ? 'NOW' : `T-${4 - idx}`}
+                                          </text>
+                                        </g>
+                                      );
+                                    })}
+
+                                    {/* Glowing Area path */}
+                                    <path
+                                      d={d3AreaPath}
+                                      fill={`url(#${areaGradientId})`}
+                                      className="transition-all duration-300"
+                                    />
+
+                                    {/* Trend line path */}
+                                    <path
+                                      d={d3LinePath}
+                                      fill="none"
+                                      stroke={themeColor}
+                                      strokeWidth="1.2"
+                                      className="transition-all duration-300"
+                                    />
+
+                                    {/* Individual Data Circles */}
+                                    {scanHistory.map((val, idx) => {
+                                      const cx = d3XScale(idx);
+                                      const cy = d3YScale(val);
+                                      const isCritical = val > 75;
+                                      return (
+                                        <g key={idx} className="group/node text-[5px] font-mono">
+                                          <circle
+                                            cx={cx}
+                                            cy={cy}
+                                            r="1.5"
+                                            fill="#070503"
+                                            stroke={isCritical ? '#ef4444' : '#1a9490'}
+                                            strokeWidth="1"
+                                            className="transition-all duration-300"
+                                          />
+                                          <text
+                                            x={cx}
+                                            y={cy - 3}
+                                            textAnchor="middle"
+                                            fill={isCritical ? '#ef4444' : '#00fffa'}
+                                            className="text-[5px] font-bold select-none opacity-90 transition-opacity"
+                                          >
+                                            {val}%
+                                          </text>
+                                        </g>
+                                      );
+                                    })}
+                                  </svg>
+                                </div>
+                              </div>
+
+                              {/* Original Summary Stats Grid */}
+                              <div className="md:col-span-2 grid grid-cols-3 gap-1.5 p-1.5 bg-[#0e0a08]/85 border border-[#211a12] rounded font-mono text-[7px]">
+                                <div className="flex flex-col justify-center">
+                                  <span className="text-slate-500 uppercase block text-[5px] tracking-wider leading-tight">Total Anomalies</span>
+                                  <span className="text-white font-bold block mt-0.5">
+                                    {leyInterferenceFindings.length} Vectors Detected
+                                  </span>
+                                </div>
+                                <div className="flex flex-col justify-center">
+                                  <span className="text-slate-500 uppercase block text-[5px] tracking-wider leading-tight">Avg Signal Drift</span>
+                                  <span className="text-amber-500 font-bold block mt-0.5">
+                                    {(leyInterferenceFindings.reduce((acc, f) => acc + parseFloat(f.phaseDrift), 0) / (leyInterferenceFindings.length || 1)).toFixed(2)}s Amplitude
+                                  </span>
+                                </div>
+                                <div className="flex flex-col justify-center">
+                                  <span className="text-slate-500 uppercase block text-[5px] tracking-wider leading-tight">Threat Assessment</span>
+                                  <span className="text-red-500 font-extrabold animate-pulse block mt-0.5">
+                                    {leyInterferenceFindings.some(f => f.status === 'CRITICAL') ? 'CRITICAL INSTABILITY' : 'SUPPRESSED'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         {/* Interactive Data Table */}
                         <div className="flex-1 overflow-y-auto overflow-x-auto min-h-0 custom-scrollbar pointer-events-auto select-none rounded border border-[#211a12]/50">
@@ -1620,6 +1798,12 @@ export default function App() {
                                             f.id === finding.id ? { ...f, status: 'ISOLATED' as const, intensity: 6 } : f
                                           );
                                           setLeyInterferenceFindings(updated);
+                                          const avgIsolate = Math.round(updated.reduce((sum, x) => sum + x.intensity, 0) / updated.length);
+                                          setScanHistory(prev => {
+                                            const next = [...prev];
+                                            if (next.length > 0) next[next.length - 1] = avgIsolate;
+                                            return next;
+                                          });
                                           playLeyScanBeep();
                                         }}
                                         className="bg-[#1a9490]/15 hover:bg-[#1a9490]/90 text-[#00fffa] hover:text-black border border-[#1a9490]/40 hover:border-[#00fffa] px-1.5 py-0.2 text-[5.5px] font-bold rounded transition-all cursor-pointer"
