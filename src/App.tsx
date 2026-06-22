@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as d3 from 'd3';
-import { Layers, Sparkles, CreditCard, Wallet, ArrowRight, Cpu, Box, RefreshCw, ShieldCheck, Wand2, X, Lock, Flame, Compass, Sliders, Activity, BookOpen, Train, Zap, Shield, Gauge, Grid, Check } from 'lucide-react';
+import { Layers, Sparkles, CreditCard, Wallet, ArrowRight, Cpu, Box, RefreshCw, ShieldCheck, Wand2, X, Lock, Flame, Compass, Sliders, Activity, BookOpen, Train, Zap, Shield, Gauge, Grid, Check, Loader2 } from 'lucide-react';
 import { MeshModel, WalletState, PurchaseHistoryItem } from './types';
 import ImageCreationPanel from './components/ImageCreationPanel';
 import ThreeDimensionalViewer from './components/ThreeDimensionalViewer';
@@ -503,6 +503,55 @@ const playSonarPing = (progress: number) => {
   }
 };
 
+const playCriticalNodeDetectedAlert = () => {
+  try {
+    // Immediate haptic vibration feedback if supported
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate([150, 80, 150, 80, 300]);
+    }
+    
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+    const time = ctx.currentTime;
+    
+    // Create an alarming warning pattern (two-tone alternating frequency sequence)
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'sawtooth';
+    // Multi-frequency chirping for tactical lookups
+    osc1.frequency.setValueAtTime(880, time);
+    osc1.frequency.setValueAtTime(660, time + 0.15);
+    osc1.frequency.setValueAtTime(880, time + 0.3);
+    
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(1000, time);
+    
+    const gainNode = ctx.createGain();
+    gainNode.gain.setValueAtTime(0, time);
+    gainNode.gain.linearRampToValueAtTime(0.18, time + 0.02);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.5);
+    
+    osc1.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    osc1.start(time);
+    osc1.stop(time + 0.5);
+    
+    setTimeout(() => {
+      if (ctx.state !== 'closed') {
+        ctx.close().catch(() => {});
+      }
+    }, 600);
+  } catch (err) {
+    console.warn('Critical Node Alert Sound failed:', err);
+  }
+};
+
 const playCriticalStabilityPulse = () => {
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -569,8 +618,12 @@ export default function App() {
     sector: string;
     description: string;
     timestamp: string;
+    generatedCoreIcon?: string;
+    coreIconStyle?: string;
   }[]>([]);
   const [lastDetectedFragment, setLastDetectedFragment] = useState<any | null>(null);
+  const [isGeneratingCoreIcon, setIsGeneratingCoreIcon] = useState<string | null>(null);
+  const [selectedCoreStyle, setSelectedCoreStyle] = useState<string>('aetheric_amber');
   const [showTacticalGrid, setShowTacticalGrid] = useState(false);
   const [leyInterferenceFindings, setLeyInterferenceFindings] = useState<{
     id: string;
@@ -581,6 +634,11 @@ export default function App() {
     status: 'ACTIVE' | 'ISOLATED' | 'CRITICAL';
   }[]>([]);
   const [scanHistory, setScanHistory] = useState<number[]>([45, 52, 49, 61, 55]);
+  const [visibleStatuses, setVisibleStatuses] = useState<Record<'ACTIVE' | 'ISOLATED' | 'CRITICAL', boolean>>({
+    ACTIVE: true,
+    ISOLATED: true,
+    CRITICAL: true
+  });
 
   // Trigger warning audio pulse when Critical Stability banner is visible
   useEffect(() => {
@@ -688,7 +746,13 @@ export default function App() {
         setDetectedLeyFragments(prev => [newFragment, ...prev]);
         setLastDetectedFragment(newFragment);
         setIsScanningLeyLines(false);
-        playLeyScanBeep();
+        
+        const containsCriticalNode = generatedFindings.some(f => f.status === 'CRITICAL');
+        if (containsCriticalNode) {
+          playCriticalNodeDetectedAlert();
+        } else {
+          playLeyScanBeep();
+        }
       } else {
         setLeyScanningProgress(currentProgress);
         playSonarPing(currentProgress);
@@ -707,6 +771,69 @@ export default function App() {
       }
     }, 150);
   };
+
+  const handleGenerateCoreIcon = async (fragmentId: string, fragmentTitle: string, stylePreset: string) => {
+    setIsGeneratingCoreIcon(fragmentId);
+    try {
+      const styles: Record<string, { prompt: string; material: string }> = {
+        aetheric_amber: {
+          prompt: "glowing amber energy thermal core, polished brass hardware, elegant technical engineering blueprints illustration, glowing runic overlays, dark high contrast background",
+          material: "metallic_copper"
+        },
+        abyssal_teal: {
+          prompt: "deep oceanic cyan-teal crystalline energy matrix, glowing marine circuitry, digital HUD blueprint graphic design, dark obsidian high contrast background",
+          material: "ethereal_glass"
+        },
+        cryo_blue: {
+          prompt: "frost crystalline neon blue sub-zero core, glowing cryogenic tubes, sub-audible physical pulse visualizer aesthetic, technical blueprint layout, black background",
+          material: "ethereal_glass"
+        },
+        necro_green: {
+          prompt: "corrupted radioactive neon-green core stone, hazardous ash-stone matrix, green glowing skull-faced cybernetic design, 3D technical blueprint layout, dark basalt grid background",
+          material: "volcanic_stone"
+        },
+        magma_crimson: {
+          prompt: "geothermal magma red hot glowing core, sun templar tribal engravings, liquid gold thermal pipes, detailed high energy blueprint illustration, dark lava-ash high contrast background",
+          material: "volcanic_stone"
+        }
+      };
+
+      const styleObj = styles[stylePreset] || styles.aetheric_amber;
+      const basePrompt = `Stylized blueprint schematic panel of a tactical Node Stone Core: [${fragmentTitle}]. Featuring ${styleObj.prompt}, orthographic front asset render model, isolated centered graphics, sci-fi vector outline design.`;
+
+      const response = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: basePrompt, aspectRatio: '1:1' }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Image generation failed');
+      }
+
+      const data = await response.json();
+      if (data.imageUrl) {
+        setDetectedLeyFragments(prev => prev.map(f => {
+          if (f.id === fragmentId) {
+            return { ...f, generatedCoreIcon: data.imageUrl, coreIconStyle: stylePreset };
+          }
+          return f;
+        }));
+
+        setLastDetectedFragment((prev: any) => {
+          if (prev && prev.id === fragmentId) {
+            return { ...prev, generatedCoreIcon: data.imageUrl, coreIconStyle: stylePreset };
+          }
+          return prev;
+        });
+      }
+    } catch (error) {
+      console.error('Failed to generate Node Core schematic:', error);
+    } finally {
+      setIsGeneratingCoreIcon(null);
+    }
+  };
+
   const [hasEntered, setHasEntered] = useState<boolean>(false);
   const [activeModel, setActiveModel] = useState<MeshModel | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -1427,6 +1554,10 @@ export default function App() {
                 {/* Tactical grid overlay */}
                 {showTacticalGrid && (
                   <div className="absolute inset-0 z-20 pointer-events-none select-none overflow-hidden rounded-lg">
+                    {/* Screen-wide red pulse effect when more than 4 nodes are in a 'CRITICAL' state */}
+                    {criticalCount > 4 && (
+                      <div className="absolute inset-0 bg-red-650/20 animate-grid-critical z-10" style={{ mixBlendMode: 'color-burn' }} />
+                    )}
                     {/* SVG Grid Overlay */}
                     <svg className={`absolute inset-0 w-full h-full ${hasCriticalNode ? 'animate-grid-critical' : ''}`} viewBox="0 0 100 100" preserveAspectRatio="none">
                       {/* Outer Tactical Corner Bracket Guides */}
@@ -1453,71 +1584,131 @@ export default function App() {
 
                       {/* Projected Ley Line Intersections & Target nodes */}
                       {[
-                        { cx: 25, cy: 30 },
-                        { cx: 75, cy: 30 },
-                        { cx: 50, cy: 50 },
-                        { cx: 25, cy: 70 },
-                        { cx: 75, cy: 70 },
-                      ].map((n, idx) => (
-                        <g key={idx} className="origin-center">
-                          {/* Pulsing Intersect rings */}
-                          <circle 
-                            cx={n.cx} 
-                            cy={n.cy} 
-                            r="3.5" 
-                            fill="none" 
-                            stroke={n.cx === 50 ? '#c46a1a' : currentTeal} 
-                            strokeWidth="0.25" 
-                            className="animate-intersection-pulse"
-                            style={{ transition: 'stroke 0.3s ease' }}
-                          />
-                          <circle 
-                            cx={n.cx} 
-                            cy={n.cy} 
-                            r="1.2" 
-                            fill={n.cx === 50 ? '#ff8400' : (isScanningLeyLines ? currentTeal : '#00fffa')} 
-                            className="animate-pulse"
-                            style={{ transition: 'fill 0.3s ease' }}
-                          />
-                          
-                          {/* Target box crosshair lines surrounding nodes */}
-                          <rect 
-                            x={n.cx - 2} 
-                            y={n.cy - 2} 
-                            width="4" 
-                            height="4" 
-                            fill="none" 
-                            stroke={n.cx === 50 ? '#c46a1a' : currentTeal} 
-                            strokeWidth="0.1" 
-                            strokeDasharray="0.5 0.5"
-                            className="opacity-60"
-                            style={{ transition: 'stroke 0.3s ease' }}
-                          />
-                        </g>
-                      ))}
+                        { cx: 25, cy: 30, name: 'LEY-A1 (NW)' },
+                        { cx: 75, cy: 30, name: 'LEY-A2 (NE)' },
+                        { cx: 50, cy: 50, name: 'CORE HYPER-CELL' },
+                        { cx: 25, cy: 70, name: 'LEY-B1 (SW)' },
+                        { cx: 75, cy: 70, name: 'LEY-B2 (SE)' },
+                      ].map((n, idx) => {
+                        const finding = leyInterferenceFindings.find(f => f.node === n.name);
+                        const status = finding ? finding.status : 'ACTIVE';
+                        const isVisible = visibleStatuses[status];
+                        
+                        if (!isVisible) return null;
+                        
+                        const color = status === 'CRITICAL' ? '#ef4444' : (status === 'ISOLATED' ? '#10b981' : '#ff8400');
+                        
+                        return (
+                          <g key={idx} className="origin-center transition-all duration-300">
+                            {/* Pulsing Intersect rings */}
+                            <circle 
+                              cx={n.cx} 
+                              cy={n.cy} 
+                              r="3.5" 
+                              fill="none" 
+                              stroke={color} 
+                              strokeWidth="0.25" 
+                              className="animate-intersection-pulse"
+                              style={{ transition: 'stroke 0.3s ease' }}
+                            />
+                            <circle 
+                              cx={n.cx} 
+                              cy={n.cy} 
+                              r="1.2" 
+                              fill={color} 
+                              className="animate-pulse"
+                              style={{ transition: 'fill 0.3s ease' }}
+                            />
+                            
+                            {/* Target box crosshair lines surrounding nodes */}
+                            <rect 
+                              x={n.cx - 2} 
+                              y={n.cy - 2} 
+                              width="4" 
+                              height="4" 
+                              fill="none" 
+                              stroke={color} 
+                              strokeWidth="0.1" 
+                              strokeDasharray="0.5 0.5"
+                              className="opacity-60"
+                              style={{ transition: 'stroke 0.3s ease' }}
+                            />
+                          </g>
+                        );
+                      })}
                     </svg>
+
+                    {/* Interactive Legend Overlay */}
+                    <div className="absolute top-2.5 right-2.5 z-40 pointer-events-auto bg-[#070503]/95 border border-[#302518] rounded-md p-1.5 flex flex-col shadow-[0_0_15px_rgba(0,0,0,0.85)] w-[100px] font-mono text-[5.5px]">
+                      <div className="flex items-center justify-between border-b border-[#211a12] pb-1 mb-1 text-[#c46a1a] font-bold uppercase tracking-wider select-none">
+                        <span>LEGEND</span>
+                        <Sliders className="w-2 h-2 text-[#c46a1a]" />
+                      </div>
+                      <div className="space-y-1">
+                        {[
+                          { id: 'ACTIVE' as const, name: 'Active', desc: 'Stable Signal', color: '#ff8400', activeBg: 'bg-amber-950/40' },
+                          { id: 'ISOLATED' as const, name: 'Isolated', desc: 'Secure / Purged', color: '#10b981', activeBg: 'bg-emerald-950/40' },
+                          { id: 'CRITICAL' as const, name: 'Critical', desc: 'Threat / Alert', color: '#ef4444', activeBg: 'bg-red-950/40' }
+                        ].map((item) => {
+                          const isVisible = visibleStatuses[item.id];
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => setVisibleStatuses(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                              className={`w-full flex items-center justify-between p-0.5 px-1 rounded border border-solid text-left cursor-pointer transition select-none ${
+                                isVisible 
+                                  ? `${item.activeBg} text-white border-[#c46a1a]/30` 
+                                  : 'bg-[#030201]/60 text-slate-500 border-zinc-800/40'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1 min-w-0">
+                                <span className="w-1 h-1 rounded-full shrink-0 animate-pulse" style={{ backgroundColor: item.color }} />
+                                <div className="leading-none truncate">
+                                  <span className="font-bold block text-[5px] uppercase">{item.name}</span>
+                                </div>
+                              </div>
+                              <div className={`w-2.5 h-2.5 rounded flex items-center justify-center shrink-0 border ${
+                                isVisible ? 'border-[#c46a1a]/50 bg-[#120a04]' : 'border-zinc-800'
+                              }`}>
+                                {isVisible && <Check className="w-2 h-2 text-[#ff8400]" />}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
                     {/* Labels with HTML text overlays for perfect rendering and accessibility */}
                     <div className="absolute inset-0 text-white font-mono text-[6.5px] pointer-events-none">
                       {([
-                        { name: 'LEY-A1 (NW)', style: { left: '26%', top: '27.5%' }, color: '' },
-                        { name: 'LEY-A2 (NE)', style: { left: '76%', top: '27.5%' }, color: '' },
-                        { name: 'CORE HYPER-CELL', style: { left: '51%', top: '47.5%', color: '#c46a1a' }, color: '#c46a1a' },
-                        { name: 'LEY-B1 (SW)', style: { left: '26%', top: '67.5%' }, color: '' },
-                        { name: 'LEY-B2 (SE)', style: { left: '76%', top: '67.5%' }, color: '' },
-                      ] as { name: string; style: React.CSSProperties; color?: string }[]).map((l, idx) => (
-                        <div 
-                          key={idx} 
-                          className="absolute bg-[#030201]/95 px-1 py-0.2 border border-[#211a12] rounded flex items-center gap-1 opacity-95 transition-all duration-300 transform -translate-y-1/2 scale-75 md:scale-100"
-                          style={l.style}
-                        >
-                          <span 
-                            className={`w-1 h-1 rounded-full ${l.name.includes('CORE') ? 'bg-amber-500' : ''} animate-pulse`} 
-                            style={l.name.includes('CORE') ? {} : { backgroundColor: currentTeal, transition: 'background-color 0.3s ease' }}
-                          />
-                          <span className="font-bold whitespace-nowrap text-white" style={l.color ? { color: l.color } : {}}>{l.name}</span>
-                        </div>
-                      ))}
+                        { name: 'LEY-A1 (NW)', style: { left: '26%', top: '27.5%' } },
+                        { name: 'LEY-A2 (NE)', style: { left: '76%', top: '27.5%' } },
+                        { name: 'CORE HYPER-CELL', style: { left: '51%', top: '47.5%' } },
+                        { name: 'LEY-B1 (SW)', style: { left: '26%', top: '67.5%' } },
+                        { name: 'LEY-B2 (SE)', style: { left: '76%', top: '67.5%' } },
+                      ] as { name: string; style: React.CSSProperties }[]).map((l, idx) => {
+                        const finding = leyInterferenceFindings.find(f => f.node === l.name);
+                        const status = finding ? finding.status : 'ACTIVE';
+                        const isVisible = visibleStatuses[status];
+                        
+                        if (!isVisible) return null;
+                        
+                        const color = status === 'CRITICAL' ? '#ef4444' : (status === 'ISOLATED' ? '#10b981' : '#ff8400');
+                        
+                        return (
+                          <div 
+                            key={idx} 
+                            className="absolute bg-[#030201]/95 px-1 py-0.2 border border-[#211a12] rounded flex items-center gap-1 opacity-95 transition-all duration-300 transform -translate-y-1/2 scale-75 md:scale-100"
+                            style={l.style}
+                          >
+                            <span 
+                              className="w-1 h-1 rounded-full animate-pulse" 
+                              style={{ backgroundColor: color }}
+                            />
+                            <span className="font-bold whitespace-nowrap" style={{ color }}>{l.name}</span>
+                          </div>
+                        );
+                      })}
 
                       {/* Grid Coordinates (Legend labels around border edges) */}
                       <div className="absolute top-1 left-[25%] -translate-x-1/2 text-slate-500 px-1 py-0.2 bg-black/60 rounded">X-25</div>
@@ -1563,8 +1754,8 @@ export default function App() {
                               onClick={() => {
                                 const updated = leyInterferenceFindings.map((f, idx) => ({
                                   ...f,
-                                  intensity: idx < 4 ? 94 : 35, // 4 critical nodes
-                                  status: idx < 4 ? 'CRITICAL' as const : 'ACTIVE' as const
+                                  intensity: idx < 5 ? 95 : 35, // 5 critical nodes (>4)
+                                  status: idx < 5 ? 'CRITICAL' as const : 'ACTIVE' as const
                                 }));
                                 setLeyInterferenceFindings(updated);
                                 const avgOverload = Math.round(updated.reduce((sum, x) => sum + x.intensity, 0) / updated.length);
@@ -1573,12 +1764,12 @@ export default function App() {
                                   if (next.length > 0) next[next.length - 1] = avgOverload;
                                   return next;
                                 });
-                                playLeyScanBeep();
+                                playCriticalNodeDetectedAlert();
                               }}
                               className="text-[6px] font-mono text-red-500 hover:text-red-400 font-bold border border-red-500/40 hover:border-red-500 px-1.5 py-0.5 rounded transition-colors bg-black/40 cursor-pointer"
-                              title="Force 4 critical nodes to trigger warning"
+                              title="Force all 5 critical nodes to trigger screen-wide warning"
                             >
-                              SIMULATE OVERLOAD
+                              SIMULATE MELTDOWN
                             </button>
                             <button 
                               onClick={() => {
@@ -1825,7 +2016,16 @@ export default function App() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-[#211a12]/40 bg-zinc-950/60">
-                              {leyInterferenceFindings.map((finding) => (
+                              {leyInterferenceFindings.filter(f => visibleStatuses[f.status]).length === 0 ? (
+                                <tr>
+                                  <td colSpan={6} className="p-4 text-center text-slate-500 italic text-[7px]" id="no-matching-anomalies">
+                                    No anomalies matching the active legend status filters.
+                                  </td>
+                                </tr>
+                              ) : (
+                                leyInterferenceFindings
+                                  .filter(finding => visibleStatuses[finding.status])
+                                  .map((finding) => (
                                 <tr 
                                   key={finding.id} 
                                   className="group hover:bg-[#c46a1a]/5 transition-colors"
@@ -1891,7 +2091,8 @@ export default function App() {
                                     )}
                                   </td>
                                 </tr>
-                              ))}
+                              ))
+                            )}
                             </tbody>
                           </table>
                         </div>
@@ -2210,6 +2411,111 @@ export default function App() {
                     <p className="text-[7.5px] text-[#a89880] leading-relaxed italic border-l-2 border-amber-600/35 pl-2">
                       {lastDetectedFragment.description}
                     </p>
+
+                    {/* Core Icon Generator Interface */}
+                    <div className="border-t border-[#231b12] pt-1.5 mt-1 text-[7.5px] font-mono space-y-1.5">
+                      {lastDetectedFragment.generatedCoreIcon ? (
+                        <div className="bg-[#050403] border border-[#231b12] p-1.5 rounded space-y-1.5">
+                          <div className="flex items-center justify-between text-[6.5px] text-slate-500">
+                            <span>[COGNITIVE SCHEMATIC SYNCED]</span>
+                            <span className="text-emerald-500 uppercase font-bold text-[6px]">● ONLINE</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <div className="w-12 h-12 rounded border border-[#c46a1a]/40 overflow-hidden shrink-0 relative bg-black flex items-center justify-center">
+                              <img 
+                                src={lastDetectedFragment.generatedCoreIcon} 
+                                alt="Node Stone Core Custom Schematic preview" 
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-[#c46a1a]/5 pointer-events-none" />
+                            </div>
+                            <div className="flex-1 flex flex-col justify-between">
+                              <div className="text-[7px]">
+                                <span className="text-[#a89880] block text-[6px] uppercase tracking-wider">Style Core Profile:</span>
+                                <span className="text-[#c46a1a] font-bold uppercase">{lastDetectedFragment.coreIconStyle?.replace('_', ' ')}</span>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  const mappedMaterial = 
+                                    lastDetectedFragment.coreIconStyle === 'necro_green' ? 'volcanic_stone' : 
+                                    (lastDetectedFragment.coreIconStyle === 'aetheric_amber' || lastDetectedFragment.coreIconStyle === 'magma_crimson' ? 'metallic_copper' : 'ethereal_glass');
+                                  handleRefImageGenerated(
+                                    lastDetectedFragment.generatedCoreIcon,
+                                    `Node Stone Core: [${lastDetectedFragment.title}]`,
+                                    mappedMaterial,
+                                    lastDetectedFragment.description
+                                  );
+                                }}
+                                className="w-full py-1 px-1.5 rounded bg-amber-600 hover:bg-amber-500 text-[#0c0906] font-bold text-[6.5px] uppercase tracking-widest flex items-center justify-center gap-1 cursor-pointer transition active:scale-95"
+                              >
+                                <Wand2 className="w-2.5 h-2.5 text-[#0c0906]" />
+                                <span>LOAD INTO TRANSMUTATOR</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-[#050403] border border-[#231b12] p-1.5 rounded space-y-1.5">
+                          <div className="flex items-center gap-1 text-[7px] text-[#c46a1a] uppercase font-black">
+                            <Sparkles className="w-2.5 h-2.5 text-[#c46a1a]" />
+                            <span>COGNITIVE ICON SCHEMATIC GENERATOR</span>
+                          </div>
+                          <p className="text-[6.5px] text-slate-500 leading-normal">
+                            Direct ORACLE-7 synthetic engines to produce a stylized, high-fidelity neural schematic diagram matching this fragment's resonance profile.
+                          </p>
+                          
+                          {/* Style Presets Core Radio select */}
+                          <div className="grid grid-cols-2 lg:grid-cols-3 gap-1">
+                            {[
+                              { id: 'aetheric_amber', name: 'Amber Core', color: '#c46a1a' },
+                              { id: 'abyssal_teal', name: 'Tidal Cyan', color: '#1a9490' },
+                              { id: 'cryo_blue', name: 'Glacier Blue', color: '#3195f1' },
+                              { id: 'necro_green', name: 'Necro Green', color: '#22c55e' },
+                              { id: 'magma_crimson', name: 'Magma Red', color: '#ef4444' }
+                            ].map((item) => {
+                              const isSelected = selectedCoreStyle === item.id;
+                              return (
+                                <button
+                                  key={item.id}
+                                  onClick={() => setSelectedCoreStyle(item.id)}
+                                  className={`px-1 py-0.5 rounded text-[5.5px] uppercase font-bold tracking-tight text-left flex items-center gap-1 border cursor-pointer select-none transition-all ${
+                                    isSelected 
+                                      ? 'bg-[#120d09] text-white shadow-sm' 
+                                      : 'bg-[#090705] text-slate-500'
+                                  }`}
+                                  style={{ borderColor: isSelected ? item.color : '#231b12' }}
+                                >
+                                  <span className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                                  <span className="truncate">{item.name}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {isGeneratingCoreIcon === lastDetectedFragment.id ? (
+                            <div className="space-y-1 pt-0.5">
+                              <div className="flex justify-between items-center text-[6px] text-amber-500 animate-pulse font-mono uppercase">
+                                <span>SYNTHESIZING MATRIX V_2.0...</span>
+                                <Loader2 className="w-2 h-2 animate-spin text-amber-500" />
+                              </div>
+                              <div className="h-1 w-full bg-[#1c140e] rounded-full overflow-hidden relative">
+                                <div className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-amber-600 to-amber-400 w-2/3 animate-pulse rounded-full" style={{ animationDuration: '0.8s' }} />
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleGenerateCoreIcon(lastDetectedFragment.id, lastDetectedFragment.title, selectedCoreStyle)}
+                              className="w-full py-1 rounded border border-[#c46a1a]/40 hover:border-[#c46a1a] bg-[#1a0e05]/50 text-[#c46a1a] hover:text-white font-bold tracking-wider uppercase text-[6.5px] flex items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 mt-1"
+                            >
+                              <Wand2 className="w-2.5 h-2.5 shrink-0" />
+                              <span>SYNTHESIZE CORE ICON</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     <button 
                       onClick={() => setLastDetectedFragment(null)}
                       className="absolute top-1 right-2 text-slate-500 hover:text-white font-mono text-[7px] p-1"
