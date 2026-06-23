@@ -639,6 +639,96 @@ export default function App() {
     ISOLATED: true,
     CRITICAL: true
   });
+  const [isPulseCoreActive, setIsPulseCoreActive] = useState<boolean>(false);
+  const [pulseFrequency, setPulseFrequency] = useState<number>(1.0);
+
+  // Web Audio Pulse Core rhythmic background beat generator
+  useEffect(() => {
+    if (!isPulseCoreActive) return;
+
+    let intervalId: any = null;
+    let audioCtx: AudioContext | null = null;
+
+    const playPulseBeat = () => {
+      try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtx) return;
+        
+        if (!audioCtx || audioCtx.state === 'closed') {
+          audioCtx = new AudioCtx();
+        }
+        
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(() => {});
+        }
+
+        const now = audioCtx.currentTime;
+
+        // 1. Deep Sub-bass Threshold Pulse (Rich core rumble)
+        const subOsc = audioCtx.createOscillator();
+        subOsc.type = 'sine';
+        // Base frequency of 65Hz (C2)
+        subOsc.frequency.setValueAtTime(65, now);
+        // Soft pitch envelope swoop for a gorgeous organic industrial heartbeat sound
+        subOsc.frequency.exponentialRampToValueAtTime(32, now + 0.18);
+
+        const subGain = audioCtx.createGain();
+        subGain.gain.setValueAtTime(0, now);
+        subGain.gain.linearRampToValueAtTime(0.42, now + 0.015);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+        const subFilter = audioCtx.createBiquadFilter();
+        subFilter.type = 'lowpass';
+        subFilter.frequency.setValueAtTime(120, now);
+
+        subOsc.connect(subFilter);
+        subFilter.connect(subGain);
+        subGain.connect(audioCtx.destination);
+
+        subOsc.start(now);
+        subOsc.stop(now + 0.25);
+
+        // 2. High-frequency analog metallic click/tick overlay for cybernetic tick
+        const tickOsc = audioCtx.createOscillator();
+        tickOsc.type = 'triangle';
+        tickOsc.frequency.setValueAtTime(980, now);
+
+        const tickGain = audioCtx.createGain();
+        tickGain.gain.setValueAtTime(0, now);
+        tickGain.gain.linearRampToValueAtTime(0.018, now + 0.002);
+        tickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+
+        const tickFilter = audioCtx.createBiquadFilter();
+        tickFilter.type = 'bandpass';
+        tickFilter.frequency.setValueAtTime(1000, now);
+        tickFilter.Q.setValueAtTime(3, now);
+
+        tickOsc.connect(tickFilter);
+        tickFilter.connect(tickGain);
+        tickGain.connect(audioCtx.destination);
+
+        tickOsc.start(now);
+        tickOsc.stop(now + 0.03);
+
+      } catch (err) {
+        console.warn('Pulse Core beat generation failed:', err);
+      }
+    };
+
+    // Trigger immediate first beat
+    playPulseBeat();
+
+    // Set interval based on frequency (Hz) -> Period (ms) = 1000 / frequency
+    const periodMs = 1000 / pulseFrequency;
+    intervalId = setInterval(playPulseBeat, periodMs);
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      if (audioCtx) {
+        audioCtx.close().catch(() => {});
+      }
+    };
+  }, [isPulseCoreActive, pulseFrequency]);
 
   // Trigger warning audio pulse when Critical Stability banner is visible
   useEffect(() => {
@@ -2341,6 +2431,93 @@ export default function App() {
                 <Layers className="w-3.5 h-3.5 text-[#c46a1a]" />
                 <span>PROCESS IN THE REACTOR FURNACE</span>
               </button>
+
+              {/* Pulse Core Resonator Engine Widget */}
+              <div className="bg-[#040302] border border-[#211a12] rounded-lg p-2.5 space-y-2 shrink-0 flex flex-col relative overflow-hidden" id="pulse-core-container">
+                <div className="flex justify-between items-center select-none">
+                  <span className="text-[7.5px] text-slate-500 font-mono tracking-widest uppercase font-bold flex items-center gap-1">
+                    <Activity className={`w-3 h-3 text-[#1a9490] ${isPulseCoreActive ? 'animate-pulse' : ''}`} />
+                    ⬡ PULSE CORE RESONATOR
+                  </span>
+                  <span className={`text-[7px] font-mono font-extrabold uppercase px-1 py-0.2 rounded border ${
+                    isPulseCoreActive 
+                      ? 'text-[#1a9490] bg-[#1a9490]/10 border-[#1a9490]/35 shadow-[0_0_8px_rgba(26,148,144,0.15)]' 
+                      : 'text-slate-500 bg-zinc-950 border-zinc-800'
+                  }`} id="pulse-core-status-pill">
+                    {isPulseCoreActive ? 'ACTIVE [ENGINE_ON]' : 'OFFLINE [MUTE]'}
+                  </span>
+                </div>
+                
+                <p className="text-[6.5px] text-[#8e806a] leading-normal font-mono select-none">
+                  Synthesize a real-time, low-frequency atmospheric rumble and cybernetic ticker to anchor cosmic telemetry.
+                </p>
+
+                <div className="flex gap-2 items-center">
+                  {/* Master Toggle */}
+                  <button
+                    onClick={() => setIsPulseCoreActive(prev => !prev)}
+                    className={`flex-1 py-1.5 rounded-md text-[7.5px] font-mono font-bold tracking-widest uppercase transition flex items-center justify-center gap-1 cursor-pointer active:scale-95 border ${
+                      isPulseCoreActive
+                        ? 'bg-[#1a9490]/15 hover:bg-[#1a9490]/25 text-[#00f0ff] border-[#1a9490]/50 shadow-[inset_0_0_8px_rgba(0,240,255,0.05)]'
+                        : 'bg-zinc-950 hover:bg-zinc-900 text-slate-400 border-zinc-850'
+                    }`}
+                    id="pulse-core-toggle-button"
+                  >
+                    <Sliders className={`w-3 h-3 ${isPulseCoreActive ? 'text-[#00f0ff]' : 'text-slate-500'}`} />
+                    <span>{isPulseCoreActive ? 'HALT CORE PULSE' : 'ENGAGE PULSE CORE'}</span>
+                  </button>
+
+                  {/* Pulsing Visual Oracle Dot */}
+                  {isPulseCoreActive && (
+                    <div className="w-4 h-4 shrink-0 flex items-center justify-center relative">
+                      <span className="absolute w-3 h-3 rounded-full bg-[#1a9490]/30 animate-ping" style={{ animationDuration: `${1 / pulseFrequency}s` }} />
+                      <span className="w-2 h-2 rounded-full bg-[#00f0ff] animate-pulse" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Frequency Selectors Grid */}
+                <div className="grid grid-cols-4 gap-1.5 pt-0.5">
+                  {[
+                    { freq: 0.5, label: '0.5 Hz', bpm: '30 BPM', desc: 'Somatic Sub' },
+                    { freq: 1.0, label: '1.0 Hz', bpm: '60 BPM', desc: 'Ambient Sec' },
+                    { freq: 1.5, label: '1.5 Hz', bpm: '90 BPM', desc: 'Sync Active' },
+                    { freq: 2.0, label: '2.0 Hz', bpm: '120 BPM', desc: 'Overclock' },
+                  ].map((preset) => {
+                    const isSelected = pulseFrequency === preset.freq;
+                    return (
+                      <button
+                        key={preset.freq}
+                        onClick={() => {
+                          setPulseFrequency(preset.freq);
+                          if (!isPulseCoreActive) {
+                            setIsPulseCoreActive(true);
+                          }
+                        }}
+                        className={`p-1 rounded border text-center transition duration-200 cursor-pointer select-none flex flex-col justify-between h-9 ${
+                          isSelected
+                            ? 'bg-[#1a9490]/12 text-[#00f0ff] border-[#1a9490] shadow-[0_0_10px_rgba(26,148,144,0.18)]'
+                            : 'bg-zinc-950/40 hover:bg-zinc-900/40 text-slate-400 border-zinc-850/60'
+                        }`}
+                        title={`${preset.label} (${preset.bpm}) - ${preset.desc}`}
+                        id={`pulse-freq-${preset.freq}`}
+                      >
+                        <span className="text-[7.5px] font-black leading-none uppercase tracking-tight block">
+                          {preset.label}
+                        </span>
+                        <div className="space-y-0 text-left">
+                          <span className={`text-[4.5px] uppercase font-bold tracking-widest block leading-none ${isSelected ? 'text-[#00f0ff]/80' : 'text-slate-500'}`}>
+                            {preset.bpm}
+                          </span>
+                          <span className="text-[4px] block font-light leading-none truncate text-[#8e806a]">
+                            {preset.desc}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
               {/* Ley Line Telemetry Scanner Widget */}
               <div className="bg-[#040302] border border-[#211a12] rounded-lg p-2.5 space-y-2 shrink-0 flex flex-col justify-between">

@@ -156,59 +156,109 @@ export default function HeroLandingPage({ onEnter }: HeroLandingPageProps) {
 
       const now = ctx.currentTime;
 
-      // Double high-resonant "Ping" signifying cognitive gate opening
-      const pingOsc = ctx.createOscillator();
-      pingOsc.type = 'sine';
-      pingOsc.frequency.setValueAtTime(950, now);
-      pingOsc.frequency.exponentialRampToValueAtTime(1330, now + 0.35);
+      // Ethereal sacred and space-harmonized pentatonic frequency profiles
+      const scalePreset1 = [432, 576, 648, 720, 864, 1152]; // Cosmic A=432 scale
+      const scalePreset2 = [528, 639, 741, 852, 963, 1056]; // Solfeggio Scale
+      const scalePreset3 = [440, 554, 659, 739, 880, 1109]; // Shimmering A major pentatonic
 
-      const pingGain = ctx.createGain();
-      pingGain.gain.setValueAtTime(0, now);
-      pingGain.gain.linearRampToValueAtTime(0.45, now + 0.02);
-      pingGain.gain.exponentialRampToValueAtTime(0.001, now + 2.4);
+      const scaleChoices = [scalePreset1, scalePreset2, scalePreset3];
+      // Randomly select one scale preset for dynamic variation on every single click
+      const selectedScale = scaleChoices[Math.floor(Math.random() * scaleChoices.length)];
 
-      pingOsc.connect(pingGain);
-      pingGain.connect(ctx.destination);
-      pingOsc.start(now);
-      pingOsc.stop(now + 2.5);
+      // Master output filter & high-fidelity spacial atmosphere gain
+      const masterFilter = ctx.createBiquadFilter();
+      masterFilter.type = 'lowpass';
+      masterFilter.frequency.setValueAtTime(2200, now);
+      masterFilter.frequency.exponentialRampToValueAtTime(1200, now + 3.0);
+      masterFilter.Q.setValueAtTime(1.5, now);
 
-      // Low frequency gravity drops / Turbine thruster spin-up
-      const sweepOsc = ctx.createOscillator();
-      sweepOsc.type = 'sawtooth';
-      sweepOsc.frequency.setValueAtTime(240, now);
-      sweepOsc.frequency.exponentialRampToValueAtTime(40, now + 1.1);
+      const delayNode = ctx.createDelay();
+      delayNode.delayTime.value = 0.22; // custom delay line spacing
+      const delayGain = ctx.createGain();
+      delayGain.gain.value = 0.45; // echo loop gain
+      
+      // Connect delay feedback loop
+      delayNode.connect(delayGain);
+      delayGain.connect(delayNode);
 
-      const sweepFilter = ctx.createBiquadFilter();
-      sweepFilter.type = 'lowpass';
-      sweepFilter.frequency.setValueAtTime(600, now);
-      sweepFilter.frequency.exponentialRampToValueAtTime(55, now + 1.1);
-      sweepFilter.Q.value = 6;
+      const masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(0, now);
+      masterGain.gain.linearRampToValueAtTime(0.35, now + 0.15);
+      masterGain.gain.setValueAtTime(0.35, now + 1.2);
+      masterGain.gain.exponentialRampToValueAtTime(0.001, now + 3.5);
 
-      const sweepGain = ctx.createGain();
-      sweepGain.gain.setValueAtTime(0, now);
-      sweepGain.gain.linearRampToValueAtTime(0.38, now + 0.12);
-      sweepGain.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+      // Connect master chain
+      masterFilter.connect(masterGain);
+      masterGain.connect(ctx.destination);
+      
+      delayNode.connect(masterFilter);
+      delayGain.connect(masterFilter);
 
-      sweepOsc.connect(sweepFilter);
-      sweepFilter.connect(sweepGain);
-      sweepGain.connect(ctx.destination);
-      sweepOsc.start(now);
-      sweepOsc.stop(now + 1.5);
+      // Create an cascading arpeggiated cluster of 5 ethereal bell nodes
+      const numberOfBells = 5;
+      for (let i = 0; i < numberOfBells; i++) {
+        const bellTime = now + (i * 0.12); // Staggered arpeggiation delay
+        const pitchIdx = (Math.floor(Math.random() * selectedScale.length) + i) % selectedScale.length;
+        const baseFreq = selectedScale[pitchIdx];
 
-      // Secondary High dynamic sparkling chime (G6 octave)
-      const chimeOsc = ctx.createOscillator();
-      chimeOsc.type = 'triangle';
-      chimeOsc.frequency.setValueAtTime(1567.98, now);
+        // Core bell body
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(baseFreq, bellTime);
+        osc.frequency.linearRampToValueAtTime(baseFreq * 1.005, bellTime + 0.5);
 
-      const chimeGain = ctx.createGain();
-      chimeGain.gain.setValueAtTime(0, now);
-      chimeGain.gain.linearRampToValueAtTime(0.20, now + 0.04);
-      chimeGain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
+        // Glassy chime FM modulator
+        const mod = ctx.createOscillator();
+        mod.type = 'sine';
+        mod.frequency.setValueAtTime(baseFreq * 2.0, bellTime);
+        
+        const modGain = ctx.createGain();
+        modGain.gain.setValueAtTime(50, bellTime);
+        modGain.gain.exponentialRampToValueAtTime(0.1, bellTime + 0.4);
 
-      chimeOsc.connect(chimeGain);
-      chimeGain.connect(ctx.destination);
-      chimeOsc.start(now);
-      chimeOsc.stop(now + 0.9);
+        // Connect modulator to oscillator frequency
+        mod.connect(modGain);
+        modGain.connect(osc.frequency);
+
+        const bellGain = ctx.createGain();
+        bellGain.gain.setValueAtTime(0, bellTime);
+        bellGain.gain.linearRampToValueAtTime(0.12, bellTime + 0.03); // quick spatial attack
+        bellGain.gain.exponentialRampToValueAtTime(0.001, bellTime + 1.8); // dreamy long decay
+
+        osc.connect(bellGain);
+        bellGain.connect(masterFilter);
+        bellGain.connect(delayNode); // feed directly into echo channel
+
+        // Scheduled cycles
+        mod.start(bellTime);
+        mod.stop(bellTime + 1.8);
+        osc.start(bellTime);
+        osc.stop(bellTime + 1.8);
+      }
+
+      // Warm atmospheric foundational pad glide block
+      const padOsc = ctx.createOscillator();
+      padOsc.type = 'triangle';
+      padOsc.frequency.setValueAtTime(144, now); // Rich D3 root tone
+      padOsc.frequency.linearRampToValueAtTime(162, now + 2.5); // slide smoothly upwards to E3
+
+      const padFilter = ctx.createBiquadFilter();
+      padFilter.type = 'lowpass';
+      padFilter.frequency.setValueAtTime(250, now);
+      padFilter.frequency.linearRampToValueAtTime(450, now + 1.5);
+      padFilter.Q.value = 3;
+
+      const padGain = ctx.createGain();
+      padGain.gain.setValueAtTime(0, now);
+      padGain.gain.linearRampToValueAtTime(0.18, now + 0.6);
+      padGain.gain.exponentialRampToValueAtTime(0.001, now + 3.0);
+
+      padOsc.connect(padFilter);
+      padFilter.connect(padGain);
+      padGain.connect(ctx.destination);
+
+      padOsc.start(now);
+      padOsc.stop(now + 3.0);
 
     } catch (err) {
       console.warn("Could not fire system enter auditory sweep:", err);

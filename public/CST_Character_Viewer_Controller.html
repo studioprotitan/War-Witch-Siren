@@ -1004,6 +1004,7 @@ function loadGLBUrl(url, name, onDone) {
     document.getElementById('operative-status').classList.add('live');
 
     // Play default idle
+    console.log('[CONTROLLER] Loaded animations:', result.animationGroups.map(g => g.name));
     const defaultAnim = findAnimByKeys([
       'fist-idle-a','cst-ert-idle-b','idle-b',
       'AS_UE5_MF_Idle_0','HeroSelect_Idle','Idle_0',
