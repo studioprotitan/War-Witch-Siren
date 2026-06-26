@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as d3 from 'd3';
-import { Layers, Sparkles, CreditCard, Wallet, ArrowRight, Cpu, Box, RefreshCw, ShieldCheck, Wand2, X, Lock, Flame, Compass, Sliders, Activity, BookOpen, Train, Zap, Shield, Gauge, Grid, Check, Loader2 } from 'lucide-react';
+import { Layers, Sparkles, CreditCard, Wallet, ArrowRight, Cpu, Box, RefreshCw, ShieldCheck, Wand2, X, Lock, Flame, Compass, Sliders, Activity, BookOpen, Train, Zap, Shield, Gauge, Grid, Check, Loader2, VolumeX, Volume2 } from 'lucide-react';
 import { MeshModel, WalletState, PurchaseHistoryItem } from './types';
 import ImageCreationPanel from './components/ImageCreationPanel';
 import ThreeDimensionalViewer from './components/ThreeDimensionalViewer';
@@ -13,6 +13,7 @@ import JanesGolemGuide from './components/JanesGolemGuide';
 import TrainRouteRadar from './components/TrainRouteRadar';
 import HeroLandingPage from './components/HeroLandingPage';
 import CineCityPanel from './components/CineCityPanel';
+import AudioVisualizerBarChart from './components/AudioVisualizerBarChart';
 
 const formatUTC = (dateStr: string) => {
   try {
@@ -39,8 +40,15 @@ const parsePsiToHue = (psiVal: string): number => {
   return Math.abs(hash) % 360;
 };
 
+const triggerAudioVisualEffect = (type: 'pulse' | 'alert' | 'beep' | 'hum' | 'ping') => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('reactor-audio-event', { detail: { type } }));
+  }
+};
+
 const playDecryptionHum = () => {
   try {
+    triggerAudioVisualEffect('hum');
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
@@ -411,6 +419,7 @@ const LEY_LINE_FRAGMENTS_POOL = [
 
 const playLeyScanBeep = () => {
   try {
+    triggerAudioVisualEffect('beep');
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
@@ -449,6 +458,7 @@ const playLeyScanBeep = () => {
 
 const playSonarPing = (progress: number) => {
   try {
+    triggerAudioVisualEffect('ping');
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
@@ -505,6 +515,7 @@ const playSonarPing = (progress: number) => {
 
 const playCriticalNodeDetectedAlert = () => {
   try {
+    triggerAudioVisualEffect('alert');
     // Immediate haptic vibration feedback if supported
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       navigator.vibrate([150, 80, 150, 80, 300]);
@@ -554,6 +565,7 @@ const playCriticalNodeDetectedAlert = () => {
 
 const playCriticalStabilityPulse = () => {
   try {
+    triggerAudioVisualEffect('alert');
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
@@ -641,6 +653,7 @@ export default function App() {
   });
   const [isPulseCoreActive, setIsPulseCoreActive] = useState<boolean>(false);
   const [pulseFrequency, setPulseFrequency] = useState<number>(1.0);
+  const [isAlertsSilenced, setIsAlertsSilenced] = useState<boolean>(false);
 
   // Web Audio Pulse Core rhythmic background beat generator
   useEffect(() => {
@@ -651,6 +664,7 @@ export default function App() {
 
     const playPulseBeat = () => {
       try {
+        triggerAudioVisualEffect('pulse');
         const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
         if (!AudioCtx) return;
         
@@ -735,7 +749,7 @@ export default function App() {
     let warningPulseInterval: NodeJS.Timeout | null = null;
     const isBannerVisible = leyScanningProgress === 100 && (leyInterferenceFindings.filter(f => f.status === 'CRITICAL').length > 3);
     
-    if (isBannerVisible) {
+    if (isBannerVisible && !isAlertsSilenced) {
       // Play first pulse immediately
       playCriticalStabilityPulse();
       
@@ -750,7 +764,7 @@ export default function App() {
         clearInterval(warningPulseInterval);
       }
     };
-  }, [leyScanningProgress, leyInterferenceFindings]);
+  }, [leyScanningProgress, leyInterferenceFindings, isAlertsSilenced]);
 
 
   const getGridTealColor = () => {
@@ -839,7 +853,9 @@ export default function App() {
         
         const containsCriticalNode = generatedFindings.some(f => f.status === 'CRITICAL');
         if (containsCriticalNode) {
-          playCriticalNodeDetectedAlert();
+          if (!isAlertsSilenced) {
+            playCriticalNodeDetectedAlert();
+          }
         } else {
           playLeyScanBeep();
         }
@@ -1840,6 +1856,51 @@ export default function App() {
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
+                            {/* Silence Alerts Toggle */}
+                            <button
+                              onClick={() => {
+                                setIsAlertsSilenced(prev => !prev);
+                                // Play a soft tick sound to confirm toggle
+                                try {
+                                  const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+                                  if (AudioCtx) {
+                                    const ctx = new AudioCtx();
+                                    const osc = ctx.createOscillator();
+                                    const g = ctx.createGain();
+                                    osc.type = 'sine';
+                                    osc.frequency.setValueAtTime(600, ctx.currentTime);
+                                    g.gain.setValueAtTime(0, ctx.currentTime);
+                                    g.gain.linearRampToValueAtTime(0.04, ctx.currentTime + 0.01);
+                                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+                                    osc.connect(g);
+                                    g.connect(ctx.destination);
+                                    osc.start();
+                                    osc.stop(ctx.currentTime + 0.1);
+                                    setTimeout(() => ctx.close().catch(() => {}), 150);
+                                  }
+                                } catch (e) {}
+                              }}
+                              className={`text-[6px] font-mono font-bold border rounded px-1.5 py-0.5 transition flex items-center gap-1 cursor-pointer select-none ${
+                                isAlertsSilenced 
+                                  ? 'bg-red-950/40 text-red-400 border-red-500/40 hover:bg-red-950/60 hover:text-red-300 shadow-[0_0_8px_rgba(239,68,68,0.15)]' 
+                                  : 'bg-[#040302] text-slate-400 border-[#211a12] hover:bg-neutral-900 hover:text-slate-200'
+                              }`}
+                              title={isAlertsSilenced ? "Click to enable critical diagnostic sirens" : "Click to silence critical diagnostic sirens independently of pulse hums"}
+                              id="silence-alerts-toggle-header"
+                            >
+                              {isAlertsSilenced ? (
+                                <>
+                                  <VolumeX className="w-2.5 h-2.5 text-red-500 shrink-0" />
+                                  <span className="leading-none">SIREN: MUTED</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Volume2 className="w-2.5 h-2.5 text-[#1baba4] shrink-0 animate-pulse" />
+                                  <span className="leading-none">SIREN: ACTIVE</span>
+                                </>
+                              )}
+                            </button>
+
                             <button 
                               onClick={() => {
                                 const updated = leyInterferenceFindings.map((f, idx) => ({
@@ -1854,7 +1915,9 @@ export default function App() {
                                   if (next.length > 0) next[next.length - 1] = avgOverload;
                                   return next;
                                 });
-                                playCriticalNodeDetectedAlert();
+                                if (!isAlertsSilenced) {
+                                  playCriticalNodeDetectedAlert();
+                                }
                               }}
                               className="text-[6px] font-mono text-red-500 hover:text-red-400 font-bold border border-red-500/40 hover:border-red-500 px-1.5 py-0.5 rounded transition-colors bg-black/40 cursor-pointer"
                               title="Force all 5 critical nodes to trigger screen-wide warning"
@@ -2068,25 +2131,33 @@ export default function App() {
                               </div>
 
                               {/* Original Summary Stats Grid */}
-                              <div className="md:col-span-2 grid grid-cols-3 gap-1.5 p-1.5 bg-[#0e0a08]/85 border border-[#211a12] rounded font-mono text-[7px]">
+                              <div className="md:col-span-1 grid grid-cols-1 gap-1.5 p-1.5 bg-[#0e0a08]/85 border border-[#211a12] rounded font-mono text-[7px]">
                                 <div className="flex flex-col justify-center">
                                   <span className="text-slate-500 uppercase block text-[5px] tracking-wider leading-tight">Total Anomalies</span>
                                   <span className="text-white font-bold block mt-0.5">
                                     {leyInterferenceFindings.length} Vectors Detected
                                   </span>
                                 </div>
-                                <div className="flex flex-col justify-center">
+                                <div className="flex flex-col justify-center border-t border-[#211a12]/30 pt-1">
                                   <span className="text-slate-500 uppercase block text-[5px] tracking-wider leading-tight">Avg Signal Drift</span>
                                   <span className="text-amber-500 font-bold block mt-0.5">
                                     {(leyInterferenceFindings.reduce((acc, f) => acc + parseFloat(f.phaseDrift), 0) / (leyInterferenceFindings.length || 1)).toFixed(2)}s Amplitude
                                   </span>
                                 </div>
-                                <div className="flex flex-col justify-center">
+                                <div className="flex flex-col justify-center border-t border-[#211a12]/30 pt-1">
                                   <span className="text-slate-500 uppercase block text-[5px] tracking-wider leading-tight">Threat Assessment</span>
                                   <span className="text-red-500 font-extrabold animate-pulse block mt-0.5">
                                     {leyInterferenceFindings.some(f => f.status === 'CRITICAL') ? 'CRITICAL INSTABILITY' : 'SUPPRESSED'}
                                   </span>
                                 </div>
+                              </div>
+
+                              {/* Real-time D3 Audio Visualizer */}
+                              <div className="md:col-span-1">
+                                <AudioVisualizerBarChart 
+                                  isPulseCoreActive={isPulseCoreActive}
+                                  pulseFrequency={pulseFrequency}
+                                />
                               </div>
                             </div>
                           );
