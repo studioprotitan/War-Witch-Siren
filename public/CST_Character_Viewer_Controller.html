@@ -689,6 +689,10 @@ input[type=range]::-webkit-slider-thumb {
           onclick="loadCDN('scene-mtd-forge-net-viewer.glb')">
     FORGE NET VIEWER
   </button>
+  <button class="dz-cdnbtn" style="border-color:var(--gold);color:var(--gold);margin-top:6px"
+          onclick="loadLocalGLB('jog-fwd-variants.glb')">
+    JOG FWD VARIANTS (LOCAL)
+  </button>
 </div>
 
 <!-- LOADER -->
@@ -744,17 +748,17 @@ let lastAction = '';
 // Maps keybindings to animation group name fragments
 // The system finds the best match from loaded animation groups
 const CTRL_ANIM_MAP = {
-  'w': ['cst-ert-walk-a','fist-walk-a','Walk_Fwd','AS_UE5_MF_Walk_Fwd_0','walk_fwd','walk','Walk'],
-  's': ['fist-walk-back-a','Walk_Back','AS_UE5_MF_Walk_Back_0','walk_back','walkback'],
-  'a': ['fist-walk-left-a','Walk_Left','AS_UE5_MF_Walk_Left_0','strafe_left','walkleft'],
-  'd': ['fist-walk-right-a','Walk_Right','AS_UE5_MF_Walk_Right_0','strafe_right','walkright'],
-  ' ': ['fist-idle-a','AS_UE5_MF_Idle_0','HeroSelect_Idle','Idle_0','idle','Idle'],
+  'w': ['cst-ert-jog-fwd-a','cst-ert-jog-fwd-downhill-a','cst-ert-jog-fwd-uphill-a','cst-ert-walk-a','fist-walk-a','Walk_Fwd','AS_UE5_MF_Walk_Fwd_0','walk_fwd','walk','Walk'],
+  's': ['cst-ert-jog-bwd-a','cst-ert-jog-bwd-start-a','fist-walk-back-a','Walk_Back','AS_UE5_MF_Walk_Back_0','walk_back','walkback'],
+  'a': ['cst-ert-jog-fwd-circle-left-a','cst-ert-jog-bwd-circle-left-a','fist-walk-left-a','Walk_Left','AS_UE5_MF_Walk_Left_0','strafe_left','walkleft'],
+  'd': ['cst-ert-jog-fwd-circle-right-a','cst-ert-jog-bwd-circle-right-a','fist-walk-right-a','Walk_Right','AS_UE5_MF_Walk_Right_0','strafe_right','walkright'],
+  ' ': ['cst-ert-jump-start-a','cst-ert-jump-apex-a','cst-ert-jump-preland-a','cst-ert-jump-recovery-a','fist-idle-a','AS_UE5_MF_Idle_0','HeroSelect_Idle','Idle_0','idle','Idle'],
   'f': ['fist-attack-a','Attack_1','AS_UE5_MF_Attack_0','attack'],
   'g': ['osu-prime-fire-fast-a','osu-prime-fire-medium-a','osu-prime-fire-slow-a','fire'],
   'e': ['cst-ert-idle-b','fist-idle-b','AS_UE5_MF_Idle_0','idle-b','Idle'],
   'a_ability': ['osu-unit-idle-a','ability','Ability'],
   'x': ['osu-loadout-deploy-a','deploy','Deploy'],
-  'idle': ['fist-idle-a','AS_UE5_MF_Idle_0','HeroSelect_Idle','Idle_0','Idle','idle'],
+  'idle': ['cst-ert-idle-a','fist-idle-a','AS_UE5_MF_Idle_0','HeroSelect_Idle','Idle_0','Idle','idle'],
 };
 
 const KEY_ANIM_MAP = {
@@ -802,7 +806,7 @@ function init() {
 
   // Auto-load default operative and force Controller Mode active on mount
   toggleControllerMode();
-  loadCDN('scene-mvp-osu-unit-stellar-a.glb');
+  loadLocalGLB('jog-fwd-variants.glb', 'scene-mvp-osu-unit-stellar-a.glb');
 }
 
 // ── CAMERA ─────────────────────────────────────────────────────
@@ -972,6 +976,58 @@ function loadCDN(filename) {
   loadGLBUrl(url, filename.replace('.glb','').replace('.gltf','').replace('.babylon',''));
 }
 
+function loadLocalGLB(filename, fallbackFilename) {
+  document.getElementById('drop-zone').classList.add('hidden');
+  showLoader('Loading local operative...');
+  
+  setLoaderPct(15, 'Decoding mesh data...');
+  BABYLON.SceneLoader.ImportMeshAsync('', '', filename, scene, evt => {
+    if (evt.lengthComputable) {
+      setLoaderPct(15 + Math.round((evt.loaded / evt.total) * 60), 'Loading geometry...');
+    }
+  }, '.glb').then(result => {
+    setLoaderPct(80, 'Building animation library...');
+    loadedMeshes = result.meshes;
+    loadedMeshes.forEach(m => { if (m.material) m.material.wireframe = wireOn; });
+    if (heatmapOn) applyHeatmap();
+    loadedSkeletons = result.skeletons;
+    animGroups = result.animationGroups;
+
+    if (loadedMeshes.length > 0) autoCenter(loadedMeshes);
+    buildAnimList(animGroups);
+    updateStats(loadedMeshes, loadedSkeletons, animGroups);
+
+    document.getElementById('operative-status').innerText = 'OPERATIVE LOADED — ' + filename.toUpperCase();
+    document.getElementById('operative-status').classList.add('live');
+
+    console.log('[CONTROLLER] Loaded animations:', result.animationGroups.map(g => g.name));
+    
+    // Play default idle
+    const defaultAnim = findAnimByKeys([
+      'cst-ert-idle-a', 'fist-idle-a','cst-ert-idle-b','idle-b',
+      'AS_UE5_MF_Idle_0','HeroSelect_Idle','Idle_0',
+      'AS_UE5_MF_Idle','Idle','idle'
+    ]);
+    if (defaultAnim) {
+      playAnim(defaultAnim);
+    } else if (animGroups.length > 0) {
+      playAnim(animGroups[0]);
+    }
+
+    setLoaderPct(100, 'Operative loaded.');
+    setTimeout(hideLoader, 500);
+  }).catch(err => {
+    console.warn('[VIEWER] Local load failed, falling back to CDN...', err);
+    if (fallbackFilename) {
+      loadCDN(fallbackFilename);
+    } else {
+      hideLoader();
+      showDropZone();
+      alert('Load failed: ' + err.message);
+    }
+  });
+}
+
 // ── GLB LOADER ──────────────────────────────────────────────────
 function loadGLBFile(file) {
   document.getElementById('drop-zone').classList.add('hidden');
@@ -1078,8 +1134,8 @@ function buildAnimList(groups) {
     const n = ag.name.toLowerCase();
     if (n.includes('fist') || n.includes('attack')) btn.classList.add('combat');
     else if (n.includes('fire') || n.includes('osu-prime')) btn.classList.add('fire');
-    else if (n.includes('walk') || n.includes('run') || n.includes('jump') || n.includes('slide')) btn.classList.add('move');
-    else if (n.includes('idle')) btn.classList.add('idle');
+    else if (n.includes('walk') || n.includes('run') || n.includes('jump') || n.includes('slide') || n.includes('jog')) btn.classList.add('move');
+    else if (n.includes('idle') || n.includes('cst-ert-idle')) btn.classList.add('idle');
     else if (n.includes('osu') || n.includes('loadout') || n.includes('deploy')) btn.classList.add('osu');
 
     btn.innerText = ag.name;
