@@ -77,4 +77,27 @@ npm run build
 # (Trigger dev server restart from the AI Studio Control Panel)
 ```
 
-The system is compiled successfully, and all security parameters conform perfectly with Moai physical scale rules. Project with confidence!
+---
+
+## 🌌 PHASE 14 COMPLIANCE & CANONICAL SSOT (STYX RISING DIRECTIVE)
+
+The project has transitioned into a **deterministic operating platform** where every subsystem operates under a shared constitutional architecture. All agents must enforce the following ground-truth definitions.
+
+### 1. Subsystem Role Isolation
+* **Oracle (The Semantic Nervous System)**: Generates and indexes world knowledge, material taxonomy (`MI_`, `TEX_`, `GEO_`), relationships, and lore. **Never** executes gameplay actions or authorizes trades.
+* **Sentinel (The Governance Engine)**: Monitors runtime integrity, fraud/wash trading, operator trust, MTD provenance validation, and security auditing. Interacts with WealthSpring solely via a read-only adapter.
+* **WGE (The World Synthesizer)**: Instantiates the procedural layout, districts, and station geometry deterministically from seeds based on Oracle definitions. **Never** invents lore.
+* **WealthSpring**: Operates as independent Studio IP providing passive, high-fidelity intelligence telemetry (risk analysis, trends, market surveillance) directly into Sentinel without participating in the player progression loop.
+
+### 2. The Canonical Pipeline
+No asset bypasses validation. The authoritative pipeline for all Genesis Verse items is:
+$$\text{Concept} \longrightarrow \text{Forge Network} \longrightarrow \text{Manufacturing} \longrightarrow \text{MTD Generation} \longrightarrow \text{Card Captor Registration} \longrightarrow \text{Sentinel Validation} \longrightarrow \text{ABEX–GDEX Listing}$$
+
+### 3. Card Captor Registry & MTD v2 Specifications
+* **Card Captor**: Serves as the authoritative, persistent identity service tracking operator dossiers, NFT pilot identification, station clearance levels, and active tactical decks.
+* **MTD v2**: Every manufactured asset must contain a complete provenance passport including station of origin, builder, material composition metadata (`MI_`), rig contracts, and a cryptographic Sentinel integrity signature.
+
+### 4. ABEX-GDEX Access Control
+Marketplace listing, liquidity provision, and banking actions are strictly locked. Access requires earning the specialized operational certification: **MTD Ash Construct: ABEX Banker** (which requires trust audits, economic competency tests, and active clearance).
+
+The system compiles successfully, all security parameters conform perfectly to Moai physical scale and structural integrity guidelines. Project with absolute confidence!

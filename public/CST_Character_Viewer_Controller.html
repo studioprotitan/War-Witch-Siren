@@ -673,7 +673,7 @@ input[type=range]::-webkit-slider-thumb {
 </div>
 
 <!-- DROP ZONE -->
-<div id="drop-zone">
+<div id="drop-zone" class="hidden">
   <div class="dz-title">FIELD UNIT INSPECTION TERMINAL</div>
   <div class="dz-sub">// GENESIS VERSE — OPERATIVE DOSSIER SYSTEM</div>
   <div class="dz-box" id="dz-box" onclick="document.getElementById('file-input').click()">
@@ -799,6 +799,10 @@ function init() {
   window.addEventListener('resize', () => engine.resize());
   setupDropZone();
   setupKeyboard();
+
+  // Auto-load default operative and force Controller Mode active on mount
+  toggleControllerMode();
+  loadCDN('scene-mvp-osu-unit-stellar-a.glb');
 }
 
 // ── CAMERA ─────────────────────────────────────────────────────

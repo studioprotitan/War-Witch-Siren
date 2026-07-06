@@ -14,6 +14,7 @@ import TrainRouteRadar from './components/TrainRouteRadar';
 import HeroLandingPage from './components/HeroLandingPage';
 import CineCityPanel from './components/CineCityPanel';
 import AudioVisualizerBarChart from './components/AudioVisualizerBarChart';
+import ConstitutionViewer from './components/ConstitutionViewer';
 
 const formatUTC = (dateStr: string) => {
   try {
@@ -617,7 +618,7 @@ const playCriticalStabilityPulse = () => {
 
 export default function App() {
   // App primary states
-  const [activeTab, setActiveTab] = useState<'reactor' | 'golemGuide' | 'forgeDeploy' | 'cineCity'>('reactor');
+  const [activeTab, setActiveTab] = useState<'reactor' | 'golemGuide' | 'forgeDeploy' | 'cineCity' | 'constitution'>('reactor');
 
   // Ley Line Scanning States
   const [isScanningLeyLines, setIsScanningLeyLines] = useState(false);
@@ -1382,6 +1383,17 @@ export default function App() {
           >
             <span className={`w-1.5 h-1.5 rounded-full ${activeTab === 'cineCity' ? 'bg-[#ffe400] animate-pulse' : 'bg-slate-600'}`} />
             CINE CITY
+          </button>
+          <button
+            onClick={() => setActiveTab('constitution')}
+            className={`px-3 py-1 rounded border uppercase tracking-wider text-[8px] font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'constitution'
+                ? 'bg-[#1a9490]/15 text-[#00fffa] border-[#1a9490]'
+                : 'bg-[#070503] text-slate-400 border-[#2e2418] hover:text-white hover:border-slate-800'
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${activeTab === 'constitution' ? 'bg-[#00fffa] animate-pulse' : 'bg-slate-600'}`} />
+            CONSTITUTION
           </button>
         </div>
       </div>
@@ -2510,13 +2522,41 @@ export default function App() {
                     <Activity className={`w-3 h-3 text-[#1a9490] ${isPulseCoreActive ? 'animate-pulse' : ''}`} />
                     ⬡ PULSE CORE RESONATOR
                   </span>
-                  <span className={`text-[7px] font-mono font-extrabold uppercase px-1 py-0.2 rounded border ${
-                    isPulseCoreActive 
-                      ? 'text-[#1a9490] bg-[#1a9490]/10 border-[#1a9490]/35 shadow-[0_0_8px_rgba(26,148,144,0.15)]' 
-                      : 'text-slate-500 bg-zinc-950 border-zinc-800'
-                  }`} id="pulse-core-status-pill">
-                    {isPulseCoreActive ? 'ACTIVE [ENGINE_ON]' : 'OFFLINE [MUTE]'}
-                  </span>
+                  {(() => {
+                    const dampingLevel = isPulseCoreActive ? Math.round((2.5 - pulseFrequency) * 40) : 100;
+                    const isDanger = dampingLevel > 90;
+                    return (
+                      <span className={`text-[7px] font-mono font-extrabold uppercase px-1 py-0.2 rounded border relative group cursor-help transition-all duration-200 ${
+                        isDanger
+                          ? 'text-red-500 bg-red-950/20 border-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.25)] hover:border-red-400'
+                          : isPulseCoreActive 
+                            ? 'text-[#1a9490] bg-[#1a9490]/10 border-[#1a9490]/35 shadow-[0_0_8px_rgba(26,148,144,0.15)] hover:border-[#1a9490]' 
+                            : 'text-slate-500 bg-zinc-950 border-zinc-800 hover:border-slate-700'
+                      }`} id="pulse-core-status-pill">
+                        {isPulseCoreActive ? 'ACTIVE [ENGINE_ON]' : 'OFFLINE [MUTE]'}
+
+                        {/* Dynamic Tooltip on Hover */}
+                        <span className="pointer-events-none absolute top-full right-0 mt-1.5 hidden group-hover:flex flex-col items-end z-50">
+                          <span className="w-1.5 h-1.5 bg-[#090706] border-l border-t border-[#211a12] rotate-45 mr-2.5 -mb-[4px] z-50" />
+                          <span className="bg-[#090706] border border-[#211a12] text-slate-400 text-[6px] font-mono p-1.5 rounded shadow-[0_4px_12px_rgba(0,0,0,0.8)] whitespace-nowrap flex flex-col gap-0.5 min-w-[120px] select-none text-left">
+                            <span className="text-[#8e806a] font-bold text-[5.5px] tracking-wider uppercase">⬥ DAMPING STATUS</span>
+                            <div className="flex justify-between items-center gap-3">
+                              <span className="text-slate-500">RESONANCE DAMPING:</span>
+                              <span className={`${isDanger ? 'text-red-500' : 'text-[#00f0ff]'} font-extrabold`}>
+                                {dampingLevel}%
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center gap-3">
+                              <span className="text-slate-500">ATTENUATION RATIO:</span>
+                              <span className="text-amber-500 font-extrabold">
+                                {isPulseCoreActive ? `${(pulseFrequency * 0.5).toFixed(2)}x` : '0.00x'}
+                              </span>
+                            </div>
+                          </span>
+                        </span>
+                      </span>
+                    );
+                  })()}
                 </div>
                 
                 <p className="text-[6.5px] text-[#8e806a] leading-normal font-mono select-none">
@@ -2862,6 +2902,12 @@ export default function App() {
       {activeTab === 'cineCity' && (
         <main className="flex-1 overflow-hidden relative z-10 flex flex-col bg-[#020408] p-4">
           <CineCityPanel />
+        </main>
+      )}
+
+      {activeTab === 'constitution' && (
+        <main className="flex-1 overflow-hidden relative z-10 flex flex-col p-4 bg-[#070503]">
+          <ConstitutionViewer />
         </main>
       )}
 

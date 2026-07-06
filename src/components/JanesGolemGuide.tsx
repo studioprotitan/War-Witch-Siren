@@ -3,7 +3,8 @@ import {
   Book, Shield, Cpu, Activity, Zap, Compass, Star, Wrench, 
   Terminal, Scroll, AlertCircle, ShoppingCart, Search, Filter, 
   Check, CreditCard, Wallet, Flame, Layers, Box, Sparkles, 
-  RefreshCw, Clipboard, ExternalLink, ArrowRight, CornerDownRight, Award
+  RefreshCw, Clipboard, ExternalLink, ArrowRight, CornerDownRight, Award,
+  Globe
 } from 'lucide-react';
 
 interface GolemGuideProps {
@@ -333,6 +334,11 @@ export default function JanesGolemGuide({
   const [stripeCard, setStripeCard] = useState({ number: '4242 •••• •••• 4242', expiry: '12/28', cvc: '931' });
   const [isProcessingLocalBuy, setIsProcessingLocalBuy] = useState(false);
 
+  // Interactive World Engine states
+  const [worldFrequency, setWorldFrequency] = useState<number>(1.5);
+  const [containmentActive, setContainmentActive] = useState<boolean>(true);
+  const [dimensionalSync, setDimensionalSync] = useState<number>(88);
+
   const calculateThreatLevel = (abex: number, gdex: number) => {
     const score = (abex * 0.6) + (gdex * 0.4);
     if (score > 85) return { level: 'APOCALYPTIC', color: 'text-red-400 border-red-500/35 bg-red-500/10' };
@@ -468,6 +474,7 @@ export default function JanesGolemGuide({
                 { id: 'abex', label: '4. ABEX–GDEX SYSTEM' },
                 { id: 'lore_cards', label: '5. LORE CARDS DECK' },
                 { id: 'mtd_decks', label: '6. MTD DECK BLUEPRINTS' },
+                { id: 'world_engine', label: '🌍 WORLD ENGINE' },
                 { id: 'ward_banker', label: '💰 ABEX WARD BANKER' },
                 { id: 'weapons', label: 'A. WEAPONS DIVISION' },
                 { id: 'logistics', label: 'B. LOGISTICS PIPELINE' },
@@ -561,6 +568,7 @@ export default function JanesGolemGuide({
               <option value="abex">4. ABEX–GDEX Weighing System</option>
               <option value="lore_cards">5. Lore Cards Deck</option>
               <option value="mtd_decks">6. MTD Deck Blueprints</option>
+              <option value="world_engine">🌍 7. World Engine Core</option>
               <option value="ward_banker">💰 ABEX Ward Banker</option>
               <option value="weapons">A. Weapons Division & Upgrades</option>
               <option value="logistics">B. Logistics & Mint-to-Deploy</option>
@@ -942,6 +950,169 @@ export default function JanesGolemGuide({
                     No cards matching searching parameters found inside the 17 completed blueprints database.
                   </div>
                 )}
+              </div>
+            </section>
+          )}
+
+          {/* 7. WORLD ENGINE (ACTIVE STRATEGIC CONTROLLER) */}
+          {(activeSection === 'all' || activeSection === 'world_engine') && (
+            <section className="space-y-6" id="golem-world-engine">
+              <div className="flex items-center justify-between border-b border-[#7b5cff]/40 pb-3">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-5 h-5 text-[#7b5cff] drop-shadow-[0_0_8px_#7b5cff]" />
+                  <h2 className="text-sm font-sans font-extrabold text-[#f5e6ff] uppercase tracking-wider">
+                    Section 7.0: World Engine Core & Tectonic Drivers
+                  </h2>
+                </div>
+                <span className="text-[8.5px] font-mono px-2 py-0.5 border border-purple-900 bg-purple-950/20 text-purple-400 uppercase tracking-widest font-extrabold">
+                  {containmentActive ? 'SHIELDING STABLE' : 'SHIELD BREAKDOWN'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* Information and Lore column */}
+                <div className="lg:col-span-7 space-y-4 text-xs text-[#d9cfff] leading-relaxed">
+                  <div className="p-4 bg-[#120f1c]/45 rounded-xl border border-[#2b233c] space-y-2">
+                    <h3 className="text-[11px] font-sans font-bold text-white uppercase tracking-wider">7.1 Tectonic & Leyline Calibration</h3>
+                    <p className="text-[#a89dc4]">
+                      The <strong>World Engine</strong> sits deep within the basalt folds of the Jane District. It is the core power plant that maintains physical timeline cohesion across Corgemont Station and stabilizes the geothermal flows required by the <strong>Horror Engine Factories</strong>.
+                    </p>
+                    <p className="text-[#a89dc4]">
+                      Without precise micro-calibration, high-frequency Golem forging cycles threaten to destabilize regional leyline links, triggering spontaneous Abyssal leaks.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-3 bg-[#151320] rounded-xl border border-[#2b233c] space-y-1">
+                      <span className="text-[8px] font-mono text-[#c9b3ff] tracking-widest block uppercase font-bold">DIMENSIONAL HARMONY</span>
+                      <p className="text-[10.5px] text-slate-400 leading-normal">
+                        Maintains spatial congruence at {dimensionalSync}% sync index. Adjust frequencies to match active tectonic shifts.
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-[#151320] rounded-xl border border-[#2b233c] space-y-1">
+                      <span className="text-[8px] font-mono text-[#c9b3ff] tracking-widest block uppercase font-bold">ABYSSAL ISOLATION</span>
+                      <p className="text-[10.5px] text-slate-400 leading-normal">
+                        Active protective warding locks down dimensional drift, guarding standard Golem blueprints from corrupted feedback loop noise.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-black/40 rounded-xl border border-[#2b233c] space-y-3">
+                    <span className="text-[8px] font-mono text-[#8e806a] uppercase tracking-widest block font-bold">SYSTEM TELEMETRY REPORT</span>
+                    <div className="space-y-2 text-[10px] font-mono">
+                      <div className="flex justify-between border-b border-[#211a12]/50 pb-1">
+                        <span className="text-slate-500">ENGINE STATUS:</span>
+                        <span className={worldFrequency > 4.0 ? 'text-red-400 font-extrabold animate-pulse' : 'text-emerald-400 font-extrabold'}>
+                          {worldFrequency > 4.0 ? '⚠ SEVERE OVERDRIVE' : '● REGULATED COHESION'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-b border-[#211a12]/50 pb-1">
+                        <span className="text-slate-500">CORE DISSIPATION FLUX:</span>
+                        <span className="text-amber-500">{(worldFrequency * 185.4).toFixed(1)} T/Wb</span>
+                      </div>
+                      <div className="flex justify-between border-b border-[#211a12]/50 pb-1">
+                        <span className="text-slate-500">RESONATOR INTENSITY:</span>
+                        <span className="text-cyan-400">{(worldFrequency * 12.5).toFixed(2)} dBm</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">TECTONIC SYMMETRY:</span>
+                        <span className="text-purple-400 font-extrabold">{(100 - Math.abs(2.5 - worldFrequency) * 15).toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Dynamic Controller Controls */}
+                <div className="lg:col-span-5 space-y-4">
+                  <div className="bg-[#121008] border border-[#c46a1a]/20 rounded-xl p-5 space-y-4">
+                    <div className="flex items-center gap-1.5 text-[8.5px] font-mono font-bold text-white uppercase tracking-widest">
+                      <Cpu className="w-4 h-4 text-[#c46a1a]" />
+                      <span>ENGINE CORE CONSOLE</span>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Control 1: Frequency slider */}
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-[9px] font-mono font-bold">
+                          <span className="text-slate-400">CORE DRIVER FREQUENCY</span>
+                          <span className="text-[#c46a1a] font-black">{worldFrequency.toFixed(2)} Hz</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0.5"
+                          max="5.0"
+                          step="0.05"
+                          value={worldFrequency}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setWorldFrequency(val);
+                            // Adjust dimensional sync based on proximity to sweet spot (2.5Hz)
+                            const accuracy = 100 - Math.abs(2.5 - val) * 12;
+                            setDimensionalSync(Math.max(25, Math.min(100, Math.round(accuracy))));
+                          }}
+                          className="w-full accent-[#c46a1a] cursor-pointer"
+                        />
+                        <div className="flex justify-between text-[6.5px] text-slate-500 font-mono">
+                          <span>0.5Hz [MIN]</span>
+                          <span className="text-purple-400">2.5Hz [OPTIMAL]</span>
+                          <span>5.0Hz [MAX]</span>
+                        </div>
+                      </div>
+
+                      {/* Control 2: Dimensional Sync modifier */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[9px] font-mono font-bold">
+                          <span className="text-slate-400">DIMENSIONAL SYNC TARGET</span>
+                          <span className="text-cyan-400">{dimensionalSync}%</span>
+                        </div>
+                        <div className="w-full bg-[#05060a] border border-[#2b233c] h-3.5 rounded overflow-hidden p-[2px] flex">
+                          <div 
+                            className={`h-full rounded-sm transition-all duration-300 ${
+                              dimensionalSync > 85 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]' :
+                              dimensionalSync > 60 ? 'bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.3)]' :
+                              'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
+                            }`}
+                            style={{ width: `${dimensionalSync}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Control 3: Shield switch button */}
+                      <div className="pt-2 flex items-center justify-between border-t border-[#211a12] gap-4">
+                        <div className="space-y-0.5">
+                          <span className="text-[9px] font-mono font-bold text-white block">ABYSSAL ISOLATION SHIELD</span>
+                          <p className="text-[8px] text-slate-500">Toggles defensive containment envelope around the factories.</p>
+                        </div>
+                        <button
+                          onClick={() => setContainmentActive(!containmentActive)}
+                          className={`px-3 py-1.5 rounded-lg font-mono text-[9px] font-bold border transition-all cursor-pointer ${
+                            containmentActive
+                              ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-400 hover:border-emerald-400'
+                              : 'bg-red-950/20 border-red-500/40 text-red-400 hover:border-red-400 animate-pulse'
+                          }`}
+                        >
+                          {containmentActive ? 'SECURED [ON]' : 'OFFLINE [WARN]'}
+                        </button>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  {/* Warning Callout */}
+                  {worldFrequency > 4.0 && (
+                    <div className="p-3 bg-red-950/20 border border-red-900/40 text-red-400 rounded-xl text-[9.5px] font-mono select-none animate-slide-in flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 animate-bounce" />
+                      <div>
+                        <strong className="block uppercase font-bold">WARNING: THERMAL RESISTANCE OVERLOAD</strong>
+                        <span>Extreme core frequencies are destabilizing the lower basalt strata! Dial down core drivers immediately to preserve structural integrity.</span>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+
               </div>
             </section>
           )}
